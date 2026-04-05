@@ -4,7 +4,7 @@
 
   import(url)
     .then(() => {
-      console.info(`%c🐦 SEAGULL-ROOM-CARD-LOADER%c loaded ${url}`, "color:#fff;background:#f97316;padding:2px 6px;border-radius:4px;font-weight:700;", "color:inherit;");
+      console.info(`%c🐦 SEAGULL-DEVICE-CARD-LOADER%c loaded ${url}`, "color:#fff;background:#7c3aed;padding:2px 6px;border-radius:4px;font-weight:700;", "color:inherit;");
     })
     .catch((err) => {
       console.error("[seagull-device-card-loader] failed to load module", url, err);

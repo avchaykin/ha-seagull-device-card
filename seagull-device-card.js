@@ -1902,7 +1902,7 @@ if (!window.__SEAGULL_DEVICE_CARD_ANNOUNCED__) {
   window.__SEAGULL_DEVICE_CARD_ANNOUNCED__ = true;
   console.info(
     `%c🐦 SEAGULL-DEVICE-CARD%c v${SEAGULL_DEVICE_CARD_VERSION} (%c${SEAGULL_DEVICE_CARD_COMMIT}%c) loaded`,
-    "color:#fff;background:#f97316;padding:2px 6px;border-radius:4px;font-weight:700;",
+    "color:#fff;background:#7c3aed;padding:2px 6px;border-radius:4px;font-weight:700;",
     "color:inherit;",
     "color:#f59e0b;font-weight:700;",
     "color:inherit;"
