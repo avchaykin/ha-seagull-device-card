@@ -1,0 +1,7 @@
+{
+  "name": "Seagull Device Card",
+  "content_in_root": true,
+  "render_readme": true,
+  "filename": "seagull-device-card.js",
+  "homeassistant": "2024.1.0"
+}
