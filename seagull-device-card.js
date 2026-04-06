@@ -101,9 +101,9 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this._selectedAreaId = this._config?.wizard?.area_id || "";
     this._selectedDeviceIds = new Set(this._config?.wizard?.device_ids || []);
     this._selectedEntityIds = new Set(this._config?.wizard?.entity_ids || []);
-    this._expandedDeviceIds = new Set();
+    this._expandedDeviceIds = this._expandedDeviceIds || new Set();
     this._selectionHydrated = false;
-    this._wizardLoaded = false;
+    this._wizardLoaded = this._wizardLoaded || false;
     this._render();
     this._ensureWizardData();
   }
