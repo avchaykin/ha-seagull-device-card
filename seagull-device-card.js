@@ -71,20 +71,8 @@ class SeagullDeviceCard extends HTMLElement {
     this._inner.style.boxSizing = "border-box";
     this._inner.style.padding = "12px";
 
-    const entityIds = [];
-    const seen = new Set();
     const devices = Array.isArray(this._config?.devices) ? this._config.devices : [];
-    devices.forEach((device) => {
-      const entities = Array.isArray(device?.entities) ? device.entities : [];
-      entities.forEach((e) => {
-        const entityId = typeof e === "string" ? e : e?.entity_id;
-        if (!entityId || seen.has(entityId)) return;
-        seen.add(entityId);
-        entityIds.push(entityId);
-      });
-    });
-
-    if (!entityIds.length) {
+    if (!devices.length) {
       this._inner.innerHTML = "";
       return;
     }
@@ -94,11 +82,10 @@ class SeagullDeviceCard extends HTMLElement {
     const btnRadius = Math.max(0, Number(this._config.button_border_radius ?? 12) || 12);
     const btnHeight = Math.max(18, Number(this._config.button_height ?? 27) || 27);
 
-    const rows = entityIds.map((entityId) => {
+    const renderEntityButton = (entityId) => {
       const st = this._hass?.states?.[entityId];
       const entityPicture = st?.attributes?.entity_picture;
       const icon = this._entityIconForState(entityId, st);
-      const value = st?.state ?? "unknown";
       const displayValue = this._formatEntityValue(entityId, st);
       const isUnavailable = String(st?.state ?? "") === "unavailable";
       const isToggle = this._isToggleEntity(entityId, st);
@@ -110,21 +97,95 @@ class SeagullDeviceCard extends HTMLElement {
       const buttonBg = isUnavailable
         ? "repeating-linear-gradient(-45deg, rgba(148,163,184,0.35) 0 8px, rgba(203,213,225,0.55) 8px 16px)"
         : "rgba(255,255,255,.58)";
-      return `
+      const html = `
         <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:${buttonBg};cursor:pointer;min-height:${btnHeight}px;overflow:hidden;font-family:inherit;">
           ${entityPicture
             ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:60px;height:60px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
             : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:60px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
-          ${isToggle
+          ${(isToggle || isUnavailable)
             ? ``
             : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;font-family:inherit;">${this._esc(displayValue)}</span>`}
         </button>
       `;
-    }).join("");
+      return { span, html };
+    };
+
+    const deviceBlocks = [];
+    const globalSeen = new Set();
+
+    for (const device of devices) {
+      const deviceName = String(device?.name || device?.device_id || "Device");
+      const rawEntities = Array.isArray(device?.entities) ? device.entities : [];
+      const buttons = rawEntities
+        .map((e) => (typeof e === "string" ? e : e?.entity_id))
+        .filter((id) => id && !globalSeen.has(id))
+        .map((id) => {
+          globalSeen.add(id);
+          return renderEntityButton(id);
+        });
+
+      const nameSpan = this._estimateDeviceNameSpan(deviceName, cols);
+      const firstRowSlots = Math.max(0, cols - nameSpan);
+
+      const packedRows = [];
+      let idx = 0;
+
+      const takeRow = (capacity) => {
+        const row = [];
+        let used = 0;
+        while (idx < buttons.length) {
+          const btn = buttons[idx];
+          const btnSpan = Math.max(1, Math.min(cols, btn.span));
+          if (used + btnSpan > capacity) break;
+          row.push(btn);
+          used += btnSpan;
+          idx += 1;
+        }
+        return { row, used };
+      };
+
+      const first = takeRow(firstRowSlots);
+      packedRows.push({ name: deviceName, nameSpan, ...first, capacity: firstRowSlots });
+
+      while (idx < buttons.length) {
+        const next = takeRow(cols);
+        if (!next.row.length) {
+          // safety: force progress even if span somehow > capacity
+          next.row.push(buttons[idx]);
+          next.used = Math.min(cols, Math.max(1, buttons[idx].span));
+          idx += 1;
+        }
+        packedRows.push({ name: null, nameSpan: 0, ...next, capacity: cols });
+      }
+
+      const blockHtml = packedRows.map((r) => {
+        const rowButtons = r.row.map((b) => b.html).join("");
+        if (r.name) {
+          const spacer = Math.max(0, cols - r.nameSpan - r.used);
+          return `
+            <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;align-items:stretch;">
+              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;font-weight:700;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
+              ${spacer > 0 ? `<div style="grid-column:span ${spacer};"></div>` : ""}
+              ${rowButtons}
+            </div>
+          `;
+        }
+
+        const spacer = Math.max(0, cols - r.used);
+        return `
+          <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;align-items:stretch;">
+            ${spacer > 0 ? `<div style="grid-column:span ${spacer};"></div>` : ""}
+            ${rowButtons}
+          </div>
+        `;
+      }).join(`<div style="height:${gap}px;"></div>`);
+
+      deviceBlocks.push(`<div style="display:flex;flex-direction:column;">${blockHtml}</div>`);
+    }
 
     this._inner.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;grid-auto-flow:row dense;">
-        ${rows}
+      <div style="display:flex;flex-direction:column;gap:${gap}px;">
+        ${deviceBlocks.join("")}
       </div>
     `;
 
@@ -149,6 +210,14 @@ class SeagullDeviceCard extends HTMLElement {
     const len = text.length;
     if (len > 42) return Math.min(cols, 3);
     if (len > 22) return Math.min(cols, 2);
+    return 1;
+  }
+
+  _estimateDeviceNameSpan(name, cols) {
+    if (cols <= 1) return 1;
+    const len = String(name ?? "").length;
+    if (len > 34) return Math.min(cols - 1, 3);
+    if (len > 18) return Math.min(cols - 1, 2);
     return 1;
   }
 
