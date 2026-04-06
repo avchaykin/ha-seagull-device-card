@@ -183,6 +183,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
     return rows
       .map(({ device, entities }) => ({
         device_id: device.id,
+        name: device.name_by_user || device.name || device.id,
         entities: entities
           .filter((e) => this._selectedEntityIds.has(e.entity_id))
           .map((e) => e.entity_id),
@@ -383,10 +384,14 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
       if (mergedEntities.length === 0 && !hasDeviceCustom) continue;
 
-      const outDev = { device_id: dev.device_id, entities: mergedEntities.sort((a, b) => String(this._entityId(a)).localeCompare(String(this._entityId(b)))) };
+      const outDev = {
+        device_id: dev.device_id,
+        name: selectedDev?.name || dev.name || dev.device_id,
+        entities: mergedEntities.sort((a, b) => String(this._entityId(a)).localeCompare(String(this._entityId(b)))),
+      };
       if (hasDeviceCustom) {
         Object.keys(dev).forEach((k) => {
-          if (k !== "device_id" && k !== "entities") outDev[k] = dev[k];
+          if (k !== "device_id" && k !== "entities" && k !== "name") outDev[k] = dev[k];
         });
       }
       result.push(outDev);
@@ -396,7 +401,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
     for (const [deviceId, selectedDev] of selectedMap.entries()) {
       const entities = (selectedDev.entities || []).map((e) => this._entityId(e)).filter(Boolean).sort();
       if (!entities.length) continue;
-      result.push({ device_id: deviceId, entities });
+      result.push({ device_id: deviceId, name: selectedDev.name || deviceId, entities });
     }
 
     const config = {
