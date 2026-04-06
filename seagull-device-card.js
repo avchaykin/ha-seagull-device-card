@@ -186,7 +186,7 @@ class SeagullDeviceCard extends HTMLElement {
         `;
       }).join(`<div style="height:${gap}px;"></div>`);
 
-      deviceBlocks.push(`<div style="display:flex;flex-direction:column;background:rgba(148,163,184,0.14);border-radius:10px;padding:8px;">${blockHtml}</div>`);
+      deviceBlocks.push(`<div style="display:flex;flex-direction:column;background:rgba(148,163,184,0.10);border-radius:10px;padding:8px;">${blockHtml}</div>`);
     }
 
     this._inner.innerHTML = `
