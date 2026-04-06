@@ -117,15 +117,113 @@ class SeagullDeviceCard extends HTMLElement {
 
     const domain = String(entityId || "").split(".")[0];
     const state = String(stateObj?.state ?? "");
+    const dc = String(stateObj?.attributes?.device_class ?? "").toLowerCase();
+
+    if (domain === "binary_sensor") {
+      const map = {
+        battery: state === "on" ? "mdi:battery-alert" : "mdi:battery",
+        battery_charging: state === "on" ? "mdi:battery-charging" : "mdi:battery",
+        cold: state === "on" ? "mdi:snowflake-alert" : "mdi:snowflake",
+        connectivity: state === "on" ? "mdi:wifi-off" : "mdi:wifi",
+        door: state === "on" ? "mdi:door-open" : "mdi:door-closed",
+        garage_door: state === "on" ? "mdi:garage-open" : "mdi:garage",
+        gas: state === "on" ? "mdi:gas-cylinder" : "mdi:shield-check",
+        heat: state === "on" ? "mdi:fire" : "mdi:fire-off",
+        light: state === "on" ? "mdi:brightness-7" : "mdi:brightness-5",
+        lock: state === "on" ? "mdi:lock-open-variant" : "mdi:lock",
+        moisture: state === "on" ? "mdi:water-alert" : "mdi:water-check",
+        motion: state === "on" ? "mdi:motion-sensor" : "mdi:motion-sensor-off",
+        occupancy: state === "on" ? "mdi:home-account" : "mdi:home-outline",
+        opening: state === "on" ? "mdi:square-outline" : "mdi:square",
+        plug: state === "on" ? "mdi:power-plug-off" : "mdi:power-plug",
+        power: state === "on" ? "mdi:flash-alert" : "mdi:flash",
+        presence: state === "on" ? "mdi:account" : "mdi:account-off",
+        problem: state === "on" ? "mdi:alert-circle" : "mdi:check-circle",
+        running: state === "on" ? "mdi:run-fast" : "mdi:walk",
+        safety: state === "on" ? "mdi:alert" : "mdi:shield-check",
+        smoke: state === "on" ? "mdi:smoke-detector-alert" : "mdi:smoke-detector",
+        sound: state === "on" ? "mdi:music-note" : "mdi:music-note-off",
+        vibration: state === "on" ? "mdi:vibrate" : "mdi:crop-portrait",
+        window: state === "on" ? "mdi:window-open" : "mdi:window-closed",
+      };
+      return map[dc] || (state === "on" ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline");
+    }
+
+    if (domain === "sensor") {
+      const map = {
+        apparent_power: "mdi:flash",
+        aqi: "mdi:air-filter",
+        atmospheric_pressure: "mdi:gauge",
+        battery: "mdi:battery",
+        carbon_dioxide: "mdi:molecule-co2",
+        carbon_monoxide: "mdi:molecule-co",
+        current: "mdi:current-ac",
+        data_rate: "mdi:speedometer",
+        data_size: "mdi:database",
+        distance: "mdi:map-marker-distance",
+        duration: "mdi:timer-outline",
+        energy: "mdi:lightning-bolt",
+        frequency: "mdi:sine-wave",
+        gas: "mdi:meter-gas",
+        humidity: "mdi:water-percent",
+        illuminance: "mdi:brightness-5",
+        irradiance: "mdi:white-balance-sunny",
+        moisture: "mdi:water-percent",
+        monetary: "mdi:currency-eur",
+        nitrogen_dioxide: "mdi:molecule",
+        nitrogen_monoxide: "mdi:molecule",
+        nitrous_oxide: "mdi:molecule",
+        ozone: "mdi:molecule",
+        pm1: "mdi:blur",
+        pm10: "mdi:blur",
+        pm25: "mdi:blur",
+        power: "mdi:flash",
+        power_factor: "mdi:angle-acute",
+        precipitation: "mdi:weather-rainy",
+        precipitation_intensity: "mdi:weather-pouring",
+        pressure: "mdi:gauge",
+        reactive_power: "mdi:flash-outline",
+        signal_strength: "mdi:wifi",
+        sound_pressure: "mdi:ear-hearing",
+        speed: "mdi:speedometer",
+        sulphur_dioxide: "mdi:molecule",
+        temperature: "mdi:thermometer",
+        timestamp: "mdi:clock-outline",
+        volatile_organic_compounds: "mdi:cloud",
+        voltage: "mdi:sine-wave",
+        volume: "mdi:car-coolant-level",
+        water: "mdi:water",
+        weight: "mdi:weight",
+        wind_speed: "mdi:weather-windy",
+      };
+      return map[dc] || "mdi:meter-electric";
+    }
 
     if (domain === "light") return state === "on" ? "mdi:lightbulb" : "mdi:lightbulb-off";
     if (domain === "switch") return "mdi:toggle-switch-variant";
-    if (domain === "binary_sensor") return state === "on" ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline";
-    if (domain === "sensor") return "mdi:meter-electric";
-    if (domain === "climate") return "mdi:thermostat";
+    if (domain === "climate") {
+      if (state === "heat") return "mdi:fire";
+      if (state === "cool") return "mdi:snowflake";
+      if (state === "dry") return "mdi:water-percent";
+      if (state === "fan_only") return "mdi:fan";
+      return "mdi:thermostat";
+    }
     if (domain === "lock") return state === "unlocked" ? "mdi:lock-open-variant" : "mdi:lock";
-    if (domain === "cover") return "mdi:window-shutter";
+    if (domain === "cover") {
+      if (dc === "garage") return state === "open" ? "mdi:garage-open" : "mdi:garage";
+      if (dc === "gate") return state === "open" ? "mdi:gate-open" : "mdi:gate";
+      if (dc === "door") return state === "open" ? "mdi:door-open" : "mdi:door-closed";
+      if (dc === "curtain") return state === "open" ? "mdi:curtains" : "mdi:curtains-closed";
+      if (dc === "blind" || dc === "shade" || dc === "shutter") return state === "open" ? "mdi:blinds-open" : "mdi:blinds";
+      if (dc === "window") return state === "open" ? "mdi:window-open" : "mdi:window-closed";
+      return "mdi:window-shutter";
+    }
     if (domain === "media_player") return "mdi:play-circle";
+    if (domain === "alarm_control_panel") return state === "disarmed" ? "mdi:shield-off" : "mdi:shield-home";
+    if (domain === "person") return state === "home" ? "mdi:account" : "mdi:account-arrow-right";
+    if (domain === "device_tracker") return state === "home" ? "mdi:cellphone-marker" : "mdi:cellphone-off";
+    if (domain === "sun") return state === "above_horizon" ? "mdi:white-balance-sunny" : "mdi:weather-night";
+    if (domain === "weather") return "mdi:weather-partly-cloudy";
 
     return "mdi:help-circle-outline";
   }
