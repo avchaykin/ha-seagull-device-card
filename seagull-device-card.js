@@ -170,7 +170,7 @@ class SeagullDeviceCard extends HTMLElement {
           const spacer = Math.max(0, cols - r.nameSpan - r.used);
           return `
             <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;align-items:stretch;">
-              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;font-weight:700;font-size:15px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
+              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;padding-left:6px;font-weight:700;font-size:15px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
               ${spacer > 0 ? `<div style="grid-column:span ${spacer};"></div>` : ""}
               ${rowButtons}
             </div>
