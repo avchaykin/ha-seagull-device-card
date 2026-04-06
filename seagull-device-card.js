@@ -61,7 +61,7 @@ class SeagullDeviceCard extends HTMLElement {
 
     this._card.style.borderRadius = `${radius}px`;
     this._card.style.border = `${borderWidth}px solid ${borderColor}`;
-    this._card.style.background = bg;
+    this._card.style.background = "transparent";
     this._card.style.boxShadow = "none";
     this._card.style.overflow = "hidden";
     this._card.style.fontFamily = "var(--paper-font-common-base_-_font-family, Roboto, Noto, sans-serif)";
@@ -88,12 +88,15 @@ class SeagullDeviceCard extends HTMLElement {
       const icon = this._entityIconForState(entityId, st);
       const displayValue = this._formatEntityValue(entityId, st);
       const isUnavailable = String(st?.state ?? "") === "unavailable";
-      const isToggle = this._isToggleEntity(entityId, st);
+      const domain = String(entityId || "").split(".")[0];
+      const hideText = domain === "light" || domain === "switch";
       const isActive = this._isEntityActiveState(entityId, st?.state);
-      const span = this._estimateButtonSpan(displayValue, cols, isToggle);
+      const span = this._estimateButtonSpan(displayValue, cols, hideText);
       const textSize = this._fitTextSize(displayValue, span, cols, gap);
-      const iconFg = isActive ? "#7c3aed" : "#6b7280";
-      const bgIconOpacity = isToggle ? 0.42 : 0.18;
+      const iconFg = isActive
+        ? ((domain === "light" || domain === "switch") ? "#f59e0b" : "#7c3aed")
+        : "#6b7280";
+      const bgIconOpacity = hideText ? 0.42 : 0.18;
       const buttonBg = isUnavailable
         ? "repeating-linear-gradient(-45deg, rgba(148,163,184,0.35) 0 8px, rgba(203,213,225,0.55) 8px 16px)"
         : "rgba(255,255,255,.58)";
@@ -102,7 +105,7 @@ class SeagullDeviceCard extends HTMLElement {
           ${entityPicture
             ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:60px;height:60px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
             : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:60px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
-          ${(isToggle || isUnavailable)
+          ${(hideText || isUnavailable)
             ? ``
             : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;font-family:inherit;">${this._esc(displayValue)}</span>`}
         </button>
@@ -204,8 +207,8 @@ class SeagullDeviceCard extends HTMLElement {
     });
   }
 
-  _estimateButtonSpan(value, cols, isToggle = false) {
-    if (isToggle) return 1;
+  _estimateButtonSpan(value, cols, hideText = false) {
+    if (hideText) return 1;
     const text = String(value ?? "");
     const len = text.length;
     if (len > 42) return Math.min(cols, 3);
@@ -271,12 +274,49 @@ class SeagullDeviceCard extends HTMLElement {
   _formatEntityValue(entityId, stateObj) {
     const state = stateObj?.state ?? "unknown";
     const attrs = stateObj?.attributes || {};
+    const domain = String(entityId || "").split(".")[0];
     const unit = attrs.unit_of_measurement;
     const entityCfg = this._getEntityConfig(entityId);
     const unitAllowed = entityCfg?.unit_of_measurement !== false;
 
+    if (domain === "binary_sensor") {
+      const mapped = this._mapBinarySensorState(state, attrs.device_class);
+      return mapped;
+    }
+
     if (!unit || !unitAllowed) return String(state);
     return `${state}${unit}`;
+  }
+
+  _mapBinarySensorState(state, deviceClass) {
+    const st = String(state ?? "").toLowerCase();
+    const dc = String(deviceClass ?? "").toLowerCase();
+    const on = st === "on";
+
+    const map = {
+      window: on ? "Open" : "Closed",
+      door: on ? "Open" : "Closed",
+      opening: on ? "Open" : "Closed",
+      garage_door: on ? "Open" : "Closed",
+      lock: on ? "Unlocked" : "Locked",
+      motion: on ? "Motion" : "Clear",
+      occupancy: on ? "Occupied" : "Clear",
+      presence: on ? "Home" : "Away",
+      connectivity: on ? "Disconnected" : "Connected",
+      power: on ? "Power issue" : "Normal",
+      problem: on ? "Problem" : "OK",
+      smoke: on ? "Smoke" : "Clear",
+      moisture: on ? "Wet" : "Dry",
+      battery: on ? "Low" : "Normal",
+      battery_charging: on ? "Charging" : "Not charging",
+      sound: on ? "Detected" : "Quiet",
+      vibration: on ? "Vibration" : "Still",
+    };
+
+    if (map[dc]) return map[dc];
+    if (st === "on") return "On";
+    if (st === "off") return "Off";
+    return String(state ?? "unknown");
   }
 
   _isEntityActiveState(entityId, state) {
