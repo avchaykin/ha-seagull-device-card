@@ -96,13 +96,19 @@ class SeagullDeviceCard extends HTMLElement {
       const entityPicture = st?.attributes?.entity_picture;
       const icon = this._entityIconForState(entityId, st);
       const value = st?.state ?? "unknown";
-      const span = this._estimateButtonSpan(value, cols);
+      const isToggle = this._isToggleEntity(entityId, st);
+      const isActive = this._isEntityActiveState(entityId, st?.state);
+      const span = this._estimateButtonSpan(value, cols, isToggle);
+      const textSize = this._fitTextSize(value, span, cols, gap);
+      const iconFg = isActive ? "#7c3aed" : "#6b7280";
       return `
-        <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="grid-column:span ${span};display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:${btnRadius}px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.58);cursor:pointer;min-height:42px;">
+        <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:${btnRadius}px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.58);cursor:pointer;min-height:54px;overflow:hidden;">
           ${entityPicture
-            ? `<img src="${this._esc(entityPicture)}" alt="" style="width:20px;height:20px;border-radius:999px;object-fit:cover;">`
-            : `<ha-icon icon="${this._esc(icon)}" style="--mdc-icon-size:20px;color:var(--primary-text-color,#111827);"></ha-icon>`}
-          <span style="font-size:14px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(value)}</span>
+            ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:999px;object-fit:cover;opacity:.22;pointer-events:none;">`
+            : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);--mdc-icon-size:60px;color:var(--primary-text-color,#111827);opacity:.18;pointer-events:none;"></ha-icon>`}
+          ${isToggle
+            ? `<ha-icon icon="${this._esc(icon)}" style="position:relative;z-index:1;--mdc-icon-size:24px;color:${iconFg};"></ha-icon>`
+            : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;">${this._esc(value)}</span>`}
         </button>
       `;
     }).join("");
@@ -128,12 +134,55 @@ class SeagullDeviceCard extends HTMLElement {
     });
   }
 
-  _estimateButtonSpan(value, cols) {
+  _estimateButtonSpan(value, cols, isToggle = false) {
+    if (isToggle) return 1;
     const text = String(value ?? "");
     const len = text.length;
     if (len > 42) return Math.min(cols, 3);
     if (len > 22) return Math.min(cols, 2);
     return 1;
+  }
+
+  _fitTextSize(value, span, cols, gap) {
+    const text = String(value ?? "");
+    const base = 14;
+    const min = base / 1.5;
+    const cardPadding = 24;
+    const estimatedColWidth = 96;
+    const width = Math.max(40, span * estimatedColWidth + (span - 1) * gap - cardPadding);
+    const estAtBase = text.length * base * 0.56;
+    if (estAtBase <= width) return base;
+    const ratio = width / Math.max(1, estAtBase);
+    const fitted = Math.max(min, Math.floor(base * ratio * 10) / 10);
+    return Math.min(base, fitted);
+  }
+
+  _isToggleEntity(entityId, stateObj) {
+    const domain = String(entityId || "").split(".")[0];
+    const toggleDomains = new Set([
+      "light",
+      "switch",
+      "fan",
+      "input_boolean",
+      "automation",
+      "media_player",
+      "cover",
+      "lock",
+      "humidifier",
+      "vacuum",
+    ]);
+    if (toggleDomains.has(domain)) return true;
+    return !!stateObj?.attributes?.assumed_state;
+  }
+
+  _isEntityActiveState(entityId, state) {
+    const domain = String(entityId || "").split(".")[0];
+    const st = String(state ?? "");
+    if (domain === "lock") return st === "unlocked";
+    if (domain === "media_player") return st === "playing";
+    if (domain === "cover") return st === "open" || st === "opening";
+    if (domain === "vacuum") return st === "cleaning";
+    return st === "on";
   }
 
   _esc(s) {
