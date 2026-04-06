@@ -387,7 +387,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
                     return `
                       <div style="padding:6px 0;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
                         <div style="display:flex;gap:8px;align-items:center;font-weight:700;">
-                          <button type="button" data-kind="expand" data-device-id="${device.id}" style="width:22px;height:22px;border:1px solid var(--divider-color,#d1d5db);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;line-height:1;">${isExpanded ? "▾" : "▸"}</button>
+                          <button type="button" data-kind="expand" data-device-id="${device.id}" style="width:28px;height:28px;border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;color:var(--primary-text-color,#111827);padding:0;display:inline-flex;align-items:center;justify-content:center;">${isExpanded ? "▾" : "▸"}</button>
                           <input type="checkbox" data-kind="device" data-device-id="${device.id}" data-selected="${selectedCount}" data-total="${entities.length}" ${devChecked ? "checked" : ""}>
                           <span>${devName}</span>
                           <span style="opacity:.6;font-weight:500;">(${selectedCount}/${entities.length})</span>
