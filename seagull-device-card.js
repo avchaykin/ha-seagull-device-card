@@ -890,6 +890,9 @@ class SeagullDeviceCardEditor extends HTMLElement {
   _render() {
     const areaGroups = this._areaGroups();
     const prevTreeScrollTop = this.querySelector("#sg-tree")?.scrollTop ?? 0;
+    const selectedUnavailableCount = [...(this._selectedEntityIds || [])]
+      .filter((entityId) => String(this._hass?.states?.[entityId]?.state ?? "") === "unavailable")
+      .length;
 
     this.innerHTML = `
       <div style="padding:12px 0; font-size:13px; line-height:1.4;">
@@ -956,7 +959,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
           </div>
 
           <div style="margin-top:10px;opacity:.8;">
-            Выбрано: <b>${this._selectedEntityIds?.size || 0}</b> сущностей, <b>${this._selectedDeviceIds?.size || 0}</b> устройств, <b>${areaGroups.filter((g) => g.rows.some((r) => this._selectedDeviceIds.has(r.device.id))).length}</b> area
+            Выбрано: <b>${this._selectedEntityIds?.size || 0}</b> сущностей, <b>${this._selectedDeviceIds?.size || 0}</b> устройств, <b>${areaGroups.filter((g) => g.rows.some((r) => this._selectedDeviceIds.has(r.device.id))).length}</b> area, <b>${selectedUnavailableCount}</b> unavailable
           </div>
 
           <label style="margin-top:8px;display:flex;align-items:center;gap:8px;opacity:.9;">
