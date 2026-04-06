@@ -10,10 +10,10 @@ class SeagullDeviceCard extends HTMLElement {
       border_radius: 16,
       border_width: 0,
       border_color: "#9ca3af",
-      grid_columns: 3,
-      grid_gap: 8,
-      button_border_radius: 12,
-      button_height: 27,
+      grid_columns: 4,
+      grid_gap: 6,
+      button_border_radius: 8,
+      button_height: 36,
       wizard: {
         area_id: null,
         device_ids: [],
@@ -77,10 +77,10 @@ class SeagullDeviceCard extends HTMLElement {
       return;
     }
 
-    const cols = Math.max(1, Number(this._config.grid_columns ?? 3) || 3);
-    const gap = Math.max(0, Number(this._config.grid_gap ?? 8) || 8);
-    const btnRadius = Math.max(0, Number(this._config.button_border_radius ?? 12) || 12);
-    const btnHeight = Math.max(18, Number(this._config.button_height ?? 27) || 27);
+    const cols = Math.max(1, Number(this._config.grid_columns ?? 4) || 4);
+    const gap = Math.max(0, Number(this._config.grid_gap ?? 6) || 6);
+    const btnRadius = Math.max(0, Number(this._config.button_border_radius ?? 8) || 8);
+    const btnHeight = Math.max(18, Number(this._config.button_height ?? 36) || 36);
 
     const renderEntityButton = (entityId) => {
       const st = this._hass?.states?.[entityId];
