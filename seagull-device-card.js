@@ -15,6 +15,7 @@ class SeagullDeviceCard extends HTMLElement {
       button_border_radius: 8,
       button_height: 36,
       background_icon_scale: 1.7,
+      hide_unavailable: false,
       wizard: {
         area_id: null,
         device_ids: [],
@@ -124,6 +125,11 @@ class SeagullDeviceCard extends HTMLElement {
       const rawEntities = Array.isArray(device?.entities) ? device.entities : [];
       const buttons = rawEntities
         .map((e) => (typeof e === "string" ? e : e?.entity_id))
+        .filter((id) => {
+          if (!id) return false;
+          if (!this._config?.hide_unavailable) return true;
+          return String(this._hass?.states?.[id]?.state ?? "") !== "unavailable";
+        })
         .filter((id) => id && !globalSeen.has(id))
         .map((id) => {
           globalSeen.add(id);
@@ -849,6 +855,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
     const config = {
       ...this._config,
       type: "custom:seagull-device-card",
+      hide_unavailable: !!this._config?.hide_unavailable,
       wizard: {
         area_id: this._selectedAreaId || null,
         device_ids: [...this._selectedDeviceIds],
@@ -858,6 +865,16 @@ class SeagullDeviceCardEditor extends HTMLElement {
     };
 
     this._emitConfigChanged(config);
+  }
+
+  _toggleHideUnavailable(checked) {
+    const config = {
+      ...this._config,
+      type: "custom:seagull-device-card",
+      hide_unavailable: !!checked,
+    };
+    this._emitConfigChanged(config);
+    this._render();
   }
 
   _esc(s) {
@@ -941,6 +958,11 @@ class SeagullDeviceCardEditor extends HTMLElement {
             Выбрано: <b>${this._selectedEntityIds?.size || 0}</b> сущностей, <b>${this._selectedDeviceIds?.size || 0}</b> устройств, <b>${areaGroups.filter((g) => g.rows.some((r) => this._selectedDeviceIds.has(r.device.id))).length}</b> area
           </div>
 
+          <label style="margin-top:8px;display:flex;align-items:center;gap:8px;opacity:.9;">
+            <input id="sg-hide-unavailable" type="checkbox" ${this._config?.hide_unavailable ? "checked" : ""}>
+            <span>Hide unavailable entities</span>
+          </label>
+
         </div>
       </div>
     `;
@@ -992,6 +1014,13 @@ class SeagullDeviceCardEditor extends HTMLElement {
         this._toggleEntity(deviceId, entityId, ev.target.checked, row?.entities || []);
       });
     });
+
+    const hideUnavailableCheckbox = this.querySelector("#sg-hide-unavailable");
+    if (hideUnavailableCheckbox) {
+      hideUnavailableCheckbox.addEventListener("change", (ev) => {
+        this._toggleHideUnavailable(ev.target.checked);
+      });
+    }
 
     const tree = this.querySelector("#sg-tree");
     if (tree) tree.scrollTop = prevTreeScrollTop;
