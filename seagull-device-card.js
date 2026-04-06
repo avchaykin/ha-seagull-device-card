@@ -234,6 +234,66 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this._render();
   }
 
+  _buildYamlConfig() {
+    const rows = this._areaRows();
+    const selectedDevices = rows
+      .map(({ device, entities }) => ({
+        name: device.name_by_user || device.name || device.id,
+        entities: entities
+          .filter((e) => this._selectedEntityIds.has(e.entity_id))
+          .map((e) => e.entity_id),
+      }))
+      .filter((d) => d.entities.length > 0);
+
+    const lines = [
+      "type: custom:seagull-device-card",
+      "background_color: \"#e5e7eb\"",
+      "border_radius: 16",
+    ];
+
+    if (this._selectedAreaId) {
+      const area = (this._areas || []).find((a) => a.area_id === this._selectedAreaId);
+      lines.push("wizard:");
+      lines.push(`  area_id: ${this._selectedAreaId}`);
+      if (area?.name) lines.push(`  area_name: \"${String(area.name).replaceAll('"', '\\"')}\"`);
+    }
+
+    lines.push("devices:");
+    if (!selectedDevices.length) {
+      lines.push("  []");
+    } else {
+      selectedDevices.forEach((device) => {
+        lines.push(`  - name: \"${String(device.name).replaceAll('"', '\\"')}\"`);
+        lines.push("    entities:");
+        device.entities.forEach((entityId) => {
+          lines.push(`      - ${entityId}`);
+        });
+      });
+    }
+
+    return lines.join("\n");
+  }
+
+  _onCreateConfig() {
+    this._generatedYaml = this._buildYamlConfig();
+    this._render();
+  }
+
+  async _copyYaml() {
+    if (!this._generatedYaml) return;
+    try {
+      await navigator.clipboard.writeText(this._generatedYaml);
+      this._copyState = "copied";
+    } catch (_e) {
+      this._copyState = "failed";
+    }
+    this._render();
+    setTimeout(() => {
+      this._copyState = null;
+      this._render();
+    }, 1200);
+  }
+
   _render() {
     const areas = Array.isArray(this._areas) ? this._areas : [];
     const rows = this._areaRows();
@@ -259,6 +319,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
           <div style="display:flex;gap:8px;margin-bottom:10px;">
             <button id="sg-all" style="padding:6px 10px;border-radius:8px;border:1px solid #7c3aed;background:#ede9fe;color:#5b21b6;font-weight:700;cursor:pointer;">Select all in area</button>
             <button id="sg-clear" style="padding:6px 10px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:700;cursor:pointer;">Clear</button>
+            <button id="sg-create-config" style="padding:6px 10px;border-radius:8px;border:1px solid #0284c7;background:#0ea5e9;color:#fff;font-weight:700;cursor:pointer;">Create config</button>
           </div>
 
           <div style="font-weight:600;margin-bottom:6px;">2) Выбери девайсы и сущности</div>
@@ -302,6 +363,16 @@ class SeagullDeviceCardEditor extends HTMLElement {
           <div style="margin-top:10px;opacity:.8;">
             Выбрано: <b>${this._selectedEntityIds?.size || 0}</b> сущностей, <b>${this._selectedDeviceIds?.size || 0}</b> устройств
           </div>
+
+          ${this._generatedYaml
+            ? `<div style="margin-top:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                  <div style="font-weight:700;">Generated YAML</div>
+                  <button id="sg-copy-yaml" style="padding:4px 8px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:700;cursor:pointer;">${this._copyState === "copied" ? "Copied" : this._copyState === "failed" ? "Copy failed" : "Copy"}</button>
+                </div>
+                <textarea readonly style="width:100%;min-height:180px;padding:8px;border-radius:8px;border:1px solid var(--divider-color,#d1d5db);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;">${this._generatedYaml}</textarea>
+              </div>`
+            : ""}
         </div>
       </div>
     `;
@@ -314,6 +385,12 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
     const btnClear = this.querySelector("#sg-clear");
     if (btnClear) btnClear.addEventListener("click", () => this._clearSelection());
+
+    const btnCreateConfig = this.querySelector("#sg-create-config");
+    if (btnCreateConfig) btnCreateConfig.addEventListener("click", () => this._onCreateConfig());
+
+    const btnCopyYaml = this.querySelector("#sg-copy-yaml");
+    if (btnCopyYaml) btnCopyYaml.addEventListener("click", () => this._copyYaml());
 
     this.querySelectorAll('input[data-kind="device"]').forEach((el) => {
       el.addEventListener("change", (ev) => {
