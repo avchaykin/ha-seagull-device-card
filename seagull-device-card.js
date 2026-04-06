@@ -550,10 +550,11 @@ class SeagullDeviceCardEditor extends HTMLElement {
     const devices = Array.isArray(this._config?.devices) ? this._config.devices : [];
     devices.forEach((dev) => {
       if (!dev?.device_id) return;
+      if (this._isDisabled(dev)) return;
       this._selectedDeviceIds.add(dev.device_id);
       (Array.isArray(dev.entities) ? dev.entities : []).forEach((e) => {
         const id = this._entityId(e);
-        if (id) this._selectedEntityIds.add(id);
+        if (id && !this._isDisabled(e)) this._selectedEntityIds.add(id);
       });
     });
   }
@@ -587,30 +588,20 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
   _hasEntityCustomConfig(entity) {
     if (!entity || typeof entity !== "object" || Array.isArray(entity)) return false;
-    return Object.keys(entity).some((k) => k !== "entity_id");
+    return Object.keys(entity).some((k) => k !== "entity_id" && k !== "disable");
   }
 
   _hasDeviceCustomConfig(device) {
     if (!device || typeof device !== "object" || Array.isArray(device)) return false;
-    return Object.keys(device).some((k) => k !== "device_id" && k !== "entities" && k !== "name");
+    return Object.keys(device).some((k) => k !== "device_id" && k !== "entities" && k !== "name" && k !== "disable");
+  }
+
+  _isDisabled(item) {
+    return !!(item && typeof item === "object" && !Array.isArray(item) && item.disable === true);
   }
 
   _getExistingDevice(deviceId) {
     return (Array.isArray(this._config?.devices) ? this._config.devices : []).find((d) => d?.device_id === deviceId) || null;
-  }
-
-  _isDeviceLocked(deviceId) {
-    const dev = this._getExistingDevice(deviceId);
-    if (!dev) return false;
-    if (this._hasDeviceCustomConfig(dev)) return true;
-    return (Array.isArray(dev.entities) ? dev.entities : []).some((e) => this._hasEntityCustomConfig(e));
-  }
-
-  _isEntityLocked(deviceId, entityId) {
-    const dev = this._getExistingDevice(deviceId);
-    if (!dev) return false;
-    const entity = (Array.isArray(dev.entities) ? dev.entities : []).find((e) => this._entityId(e) === entityId);
-    return this._hasEntityCustomConfig(entity);
   }
 
   _mergeDevices(existingDevices, newDevices) {
@@ -677,11 +668,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
   }
 
   _toggleDevice(deviceId, checked, entities) {
-    if (!checked && this._isDeviceLocked(deviceId)) {
-      this._render();
-      return;
-    }
-
     if (checked) this._selectedDeviceIds.add(deviceId);
     else this._selectedDeviceIds.delete(deviceId);
 
@@ -689,7 +675,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
       const entityId = entity.entity_id;
       if (checked) {
         this._selectedEntityIds.add(entityId);
-      } else if (!this._isEntityLocked(deviceId, entityId)) {
+      } else {
         this._selectedEntityIds.delete(entityId);
       }
     }
@@ -699,18 +685,13 @@ class SeagullDeviceCardEditor extends HTMLElement {
   }
 
   _toggleEntity(deviceId, entityId, checked, deviceEntities) {
-    if (!checked && this._isEntityLocked(deviceId, entityId)) {
-      this._render();
-      return;
-    }
-
     if (checked) this._selectedEntityIds.add(entityId);
     else this._selectedEntityIds.delete(entityId);
 
     const allSelected = (deviceEntities || []).every((e) => this._selectedEntityIds.has(e.entity_id));
     if (allSelected && (deviceEntities || []).length) {
       this._selectedDeviceIds.add(deviceId);
-    } else if (!this._isDeviceLocked(deviceId)) {
+    } else {
       this._selectedDeviceIds.delete(deviceId);
     }
 
@@ -731,9 +712,9 @@ class SeagullDeviceCardEditor extends HTMLElement {
   _clearSelection() {
     const rows = this._areaRows();
     for (const { device, entities } of rows) {
-      if (!this._isDeviceLocked(device.id)) this._selectedDeviceIds.delete(device.id);
+      this._selectedDeviceIds.delete(device.id);
       for (const entity of entities) {
-        if (!this._isEntityLocked(device.id, entity.entity_id)) this._selectedEntityIds.delete(entity.entity_id);
+        this._selectedEntityIds.delete(entity.entity_id);
       }
     }
     this._syncConfigFromSelection();
@@ -765,25 +746,53 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
       const mergedEntities = [];
       for (const [id, entityCfg] of existingMap.entries()) {
-        if (selectedEntityIds.has(id) || this._hasEntityCustomConfig(entityCfg)) {
-          mergedEntities.push(this._hasEntityCustomConfig(entityCfg) ? entityCfg : id);
+        const wasSelected = selectedEntityIds.has(id);
+        const hasEntityCustom = this._hasEntityCustomConfig(entityCfg);
+
+        if (wasSelected) {
+          if (typeof entityCfg === "object" && entityCfg) {
+            const { disable, ...rest } = entityCfg;
+            mergedEntities.push(Object.keys(rest).length === 1 && rest.entity_id ? id : rest);
+          } else {
+            mergedEntities.push(id);
+          }
           selectedEntityIds.delete(id);
+          continue;
+        }
+
+        if (hasEntityCustom) {
+          const base = (typeof entityCfg === "object" && entityCfg) ? { ...entityCfg } : { entity_id: id };
+          base.disable = true;
+          mergedEntities.push(base);
         }
       }
       for (const id of selectedEntityIds) mergedEntities.push(id);
 
-      if (mergedEntities.length === 0 && !hasDeviceCustom) continue;
+      const shouldBeEnabled = !!selectedDev;
+      const hasConfiguredEntities = mergedEntities.some((e) => this._hasEntityCustomConfig(e));
+
+      if (!shouldBeEnabled && !hasDeviceCustom && !hasConfiguredEntities) {
+        // clean device removed from wizard => drop fully
+        selectedMap.delete(dev.device_id);
+        continue;
+      }
 
       const outDev = {
         device_id: dev.device_id,
         name: selectedDev?.name || dev.name || dev.device_id,
         entities: mergedEntities.sort((a, b) => String(this._entityId(a)).localeCompare(String(this._entityId(b)))),
       };
-      if (hasDeviceCustom) {
-        Object.keys(dev).forEach((k) => {
-          if (k !== "device_id" && k !== "entities" && k !== "name") outDev[k] = dev[k];
-        });
+
+      Object.keys(dev).forEach((k) => {
+        if (k === "device_id" || k === "entities" || k === "name") return;
+        if (k === "disable") return;
+        outDev[k] = dev[k];
+      });
+
+      if (!shouldBeEnabled && (hasDeviceCustom || hasConfiguredEntities)) {
+        outDev.disable = true;
       }
+
       result.push(outDev);
       selectedMap.delete(dev.device_id);
     }
@@ -848,27 +857,23 @@ class SeagullDeviceCardEditor extends HTMLElement {
                     const devChecked = this._selectedDeviceIds.has(device.id);
                     const selectedCount = entities.filter((e) => this._selectedEntityIds.has(e.entity_id)).length;
                     const isExpanded = this._isDeviceExpanded(device.id);
-                    const deviceLocked = this._isDeviceLocked(device.id);
                     return `
                       <div style="padding:6px 0;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
                         <div style="display:flex;gap:8px;align-items:center;font-weight:700;">
                           <button type="button" data-kind="expand" data-device-id="${device.id}" style="width:28px;height:28px;border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;color:var(--primary-text-color,#111827);padding:0;display:inline-flex;align-items:center;justify-content:center;">${isExpanded ? "▾" : "▸"}</button>
-                          <input type="checkbox" data-kind="device" data-device-id="${device.id}" data-selected="${selectedCount}" data-total="${entities.length}" ${deviceLocked ? "disabled" : ""} ${devChecked ? "checked" : ""}>
+                          <input type="checkbox" data-kind="device" data-device-id="${device.id}" data-selected="${selectedCount}" data-total="${entities.length}" ${devChecked ? "checked" : ""}>
                           <span>${devName}</span>
                           <span style="opacity:.6;font-weight:500;">(${selectedCount}/${entities.length})</span>
-                          ${deviceLocked ? `<span style="font-size:11px;opacity:.65;padding:2px 6px;border-radius:999px;background:#f3f4f6;">locked</span>` : ""}
                         </div>
                         ${isExpanded
                           ? `<div style="padding:8px 0 0 30px;display:flex;flex-direction:column;gap:4px;">
                               ${entities.map((entity) => {
                                 const checked = this._selectedEntityIds.has(entity.entity_id);
-                                const entityLocked = this._isEntityLocked(device.id, entity.entity_id);
                                 return `
                                   <label style="display:flex;gap:8px;align-items:center;">
-                                    <input type="checkbox" data-kind="entity" data-device-id="${device.id}" data-entity-id="${entity.entity_id}" ${entityLocked ? "disabled" : ""} ${checked ? "checked" : ""}>
+                                    <input type="checkbox" data-kind="entity" data-device-id="${device.id}" data-entity-id="${entity.entity_id}" ${checked ? "checked" : ""}>
                                     <span>${entity.name || entity.original_name || entity.entity_id}</span>
                                     <code style="opacity:.65;">${entity.entity_id}</code>
-                                    ${entityLocked ? `<span style="font-size:11px;opacity:.65;">🔒</span>` : ""}
                                   </label>
                                 `;
                               }).join("")}
