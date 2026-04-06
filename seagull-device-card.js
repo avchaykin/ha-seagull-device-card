@@ -1,4 +1,4 @@
-const SEAGULL_DEVICE_CARD_VERSION = "2.0.0";
+const SEAGULL_DEVICE_CARD_VERSION = "0.1.0";
 const SEAGULL_DEVICE_CARD_COMMIT = "dev";
 
 class SeagullDeviceCard extends HTMLElement {
@@ -108,7 +108,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
     this._ensureWizardData();
   }
 
