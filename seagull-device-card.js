@@ -98,14 +98,18 @@ class SeagullDeviceCard extends HTMLElement {
       const entityPicture = st?.attributes?.entity_picture;
       const icon = this._entityIconForState(entityId, st);
       const value = st?.state ?? "unknown";
+      const isUnavailable = String(st?.state ?? "") === "unavailable";
       const isToggle = this._isToggleEntity(entityId, st);
       const isActive = this._isEntityActiveState(entityId, st?.state);
       const span = this._estimateButtonSpan(value, cols, isToggle);
       const textSize = this._fitTextSize(value, span, cols, gap);
       const iconFg = isActive ? "#7c3aed" : "#6b7280";
       const bgIconOpacity = isToggle ? 0.42 : 0.18;
+      const buttonBg = isUnavailable
+        ? "repeating-linear-gradient(-45deg, rgba(148,163,184,0.35) 0 8px, rgba(203,213,225,0.55) 8px 16px)"
+        : "rgba(255,255,255,.58)";
       return `
-        <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:rgba(255,255,255,.58);cursor:pointer;min-height:${btnHeight}px;overflow:hidden;">
+        <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:${buttonBg};cursor:pointer;min-height:${btnHeight}px;overflow:hidden;">
           ${entityPicture
             ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:60px;height:60px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
             : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:60px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
