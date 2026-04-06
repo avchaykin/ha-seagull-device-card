@@ -64,6 +64,7 @@ class SeagullDeviceCard extends HTMLElement {
     this._card.style.background = bg;
     this._card.style.boxShadow = "none";
     this._card.style.overflow = "hidden";
+    this._card.style.fontFamily = "var(--paper-font-common-base_-_font-family, Roboto, Noto, sans-serif)";
 
     this._inner.style.minHeight = "160px";
     this._inner.style.width = "100%";
