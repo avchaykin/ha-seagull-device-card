@@ -311,7 +311,7 @@ class SeagullDeviceCard extends HTMLElement {
       motion: on ? "Motion" : "Clear",
       occupancy: on ? "Occupied" : "Clear",
       presence: on ? "Home" : "Away",
-      connectivity: on ? "Disconnected" : "Connected",
+      connectivity: on ? "Connected" : "Disconnected",
       power: on ? "Power issue" : "Normal",
       problem: on ? "Problem" : "OK",
       smoke: on ? "Smoke" : "Clear",
