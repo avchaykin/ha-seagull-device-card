@@ -206,7 +206,7 @@ class SeagullDeviceCard extends HTMLElement {
     const unitAllowed = entityCfg?.unit_of_measurement !== false;
 
     if (!unit || !unitAllowed) return String(state);
-    return `${state} ${unit}`;
+    return `${state}${unit}`;
   }
 
   _isEntityActiveState(entityId, state) {
