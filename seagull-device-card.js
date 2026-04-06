@@ -360,7 +360,7 @@ class SeagullDeviceCard extends HTMLElement {
         battery: state === "on" ? "mdi:battery-alert" : "mdi:battery",
         battery_charging: state === "on" ? "mdi:battery-charging" : "mdi:battery",
         cold: state === "on" ? "mdi:snowflake-alert" : "mdi:snowflake",
-        connectivity: state === "on" ? "mdi:wifi-off" : "mdi:wifi",
+        connectivity: state === "on" ? "mdi:wifi" : "mdi:wifi-off",
         door: state === "on" ? "mdi:door-open" : "mdi:door-closed",
         garage_door: state === "on" ? "mdi:garage-open" : "mdi:garage",
         gas: state === "on" ? "mdi:gas-cylinder" : "mdi:shield-check",
