@@ -99,7 +99,7 @@ class SeagullDeviceCard extends HTMLElement {
       const bgIconOpacity = hideText ? 0.42 : 0.18;
       const buttonBg = isUnavailable
         ? "repeating-linear-gradient(-45deg, rgba(148,163,184,0.35) 0 8px, rgba(203,213,225,0.55) 8px 16px)"
-        : "rgba(255,255,255,.58)";
+        : "rgba(148,163,184,.36)";
       const html = `
         <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:${buttonBg};cursor:pointer;min-height:${btnHeight}px;overflow:hidden;font-family:inherit;">
           ${entityPicture
