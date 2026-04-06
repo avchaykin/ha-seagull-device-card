@@ -86,11 +86,14 @@ class SeagullDeviceCard extends HTMLElement {
 
     const rows = entityIds.map((entityId) => {
       const st = this._hass?.states?.[entityId];
-      const icon = st?.attributes?.icon || "mdi:help-circle-outline";
+      const entityPicture = st?.attributes?.entity_picture;
+      const icon = this._entityIconForState(entityId, st);
       const value = st?.state ?? "unknown";
       return `
         <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-          <ha-icon icon="${this._esc(icon)}" style="--mdc-icon-size:20px;color:var(--primary-text-color,#111827);"></ha-icon>
+          ${entityPicture
+            ? `<img src="${this._esc(entityPicture)}" alt="" style="width:20px;height:20px;border-radius:999px;object-fit:cover;">`
+            : `<ha-icon icon="${this._esc(icon)}" style="--mdc-icon-size:20px;color:var(--primary-text-color,#111827);"></ha-icon>`}
           <span style="font-size:14px;color:var(--primary-text-color,#111827);">${this._esc(value)}</span>
         </div>
       `;
@@ -106,6 +109,25 @@ class SeagullDeviceCard extends HTMLElement {
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
+  }
+
+  _entityIconForState(entityId, stateObj) {
+    const attrIcon = stateObj?.attributes?.icon;
+    if (attrIcon) return attrIcon;
+
+    const domain = String(entityId || "").split(".")[0];
+    const state = String(stateObj?.state ?? "");
+
+    if (domain === "light") return state === "on" ? "mdi:lightbulb" : "mdi:lightbulb-off";
+    if (domain === "switch") return "mdi:toggle-switch-variant";
+    if (domain === "binary_sensor") return state === "on" ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline";
+    if (domain === "sensor") return "mdi:meter-electric";
+    if (domain === "climate") return "mdi:thermostat";
+    if (domain === "lock") return state === "unlocked" ? "mdi:lock-open-variant" : "mdi:lock";
+    if (domain === "cover") return "mdi:window-shutter";
+    if (domain === "media_player") return "mdi:play-circle";
+
+    return "mdi:help-circle-outline";
   }
 
   _clampOpacity(value) {
