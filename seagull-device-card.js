@@ -63,6 +63,49 @@ class SeagullDeviceCard extends HTMLElement {
 
     this._inner.style.minHeight = "160px";
     this._inner.style.width = "100%";
+    this._inner.style.boxSizing = "border-box";
+    this._inner.style.padding = "12px";
+
+    const entityIds = [];
+    const seen = new Set();
+    const devices = Array.isArray(this._config?.devices) ? this._config.devices : [];
+    devices.forEach((device) => {
+      const entities = Array.isArray(device?.entities) ? device.entities : [];
+      entities.forEach((e) => {
+        const entityId = typeof e === "string" ? e : e?.entity_id;
+        if (!entityId || seen.has(entityId)) return;
+        seen.add(entityId);
+        entityIds.push(entityId);
+      });
+    });
+
+    if (!entityIds.length) {
+      this._inner.innerHTML = "";
+      return;
+    }
+
+    const rows = entityIds.map((entityId) => {
+      const st = this._hass?.states?.[entityId];
+      const icon = st?.attributes?.icon || "mdi:help-circle-outline";
+      const value = st?.state ?? "unknown";
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+          <ha-icon icon="${this._esc(icon)}" style="--mdc-icon-size:20px;color:var(--primary-text-color,#111827);"></ha-icon>
+          <span style="font-size:14px;color:var(--primary-text-color,#111827);">${this._esc(value)}</span>
+        </div>
+      `;
+    }).join("");
+
+    this._inner.innerHTML = rows;
+  }
+
+  _esc(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
   }
 
   _clampOpacity(value) {
