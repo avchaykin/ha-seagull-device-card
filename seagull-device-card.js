@@ -823,6 +823,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
   _render() {
     const areas = Array.isArray(this._areas) ? this._areas : [];
     const rows = this._areaRows();
+    const prevTreeScrollTop = this.querySelector("#sg-tree")?.scrollTop ?? 0;
 
     this.innerHTML = `
       <div style="padding:12px 0; font-size:13px; line-height:1.4;">
@@ -848,7 +849,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
           </div>
 
           <div style="font-weight:600;margin-bottom:6px;">2) Выбери девайсы и сущности</div>
-          <div style="max-height:320px;overflow:auto;border:1px solid var(--divider-color,#d1d5db);border-radius:8px;padding:8px;">
+          <div id="sg-tree" style="max-height:320px;overflow:auto;border:1px solid var(--divider-color,#d1d5db);border-radius:8px;padding:8px;">
             ${this._wizardError
               ? `<div style="color:#dc2626;">Failed to load HA registries: ${this._wizardError}</div>`
               : (!this._selectedAreaId
@@ -933,6 +934,9 @@ class SeagullDeviceCardEditor extends HTMLElement {
         this._toggleEntity(deviceId, entityId, ev.target.checked, row?.entities || []);
       });
     });
+
+    const tree = this.querySelector("#sg-tree");
+    if (tree) tree.scrollTop = prevTreeScrollTop;
   }
 }
 
