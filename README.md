@@ -2,16 +2,30 @@
 
 Home Assistant custom card: `custom:seagull-device-card`.
 
-<img src="assets/screenshot.jpg" alt="Seagull Device Card screenshot" width="360" />
+A device-oriented card with an interactive editor wizard (area → device → entity) and a compact grid UI for selected entities.
 
-## Features
+## What it does
 
-- Compact room card with configurable icon, text and button grid
-- Flexible button collections (`entities`, `items`, `button`, `buttons`; `lights` alias supported)
-- Smart visibility (`show*`) + `keep_spot` to preserve layout when hidden
-- Theming with day/night palette and `$palette_key` references
-- Domain-aware defaults (e.g. `sensor` / `binary_sensor` default to `more-info` actions)
-- Action system: `toggle`, `more-info`, `navigate`, `perform-action`, `sequence`
+- Editor wizard with hierarchical tree:
+  - Areas (expand/collapse + checkbox)
+  - Devices inside areas (expand/collapse + checkbox)
+  - Entities inside devices (checkbox)
+- Live config updates while you click (no separate “create config” button)
+- Safe removal behavior:
+  - Clean entries are removed from config when unchecked
+  - Configured entries are marked with `disable: true` when unchecked
+  - Re-checking removes `disable: true`
+- Device card rendering:
+  - Grouped by device
+  - Device title on the left
+  - Entity buttons right-aligned in grid slots
+  - `more-info` on click
+- Entity visuals:
+  - Large semi-transparent background icon per button
+  - Toggle-style entities (`light`, `switch`) show icon-only
+  - Unavailable entities show diagonal striped fill and no text
+  - Binary sensor state mapping (e.g. `window off -> Closed`, `door on -> Open`)
+  - `unit_of_measurement` appended to state unless explicitly disabled per entity config
 
 ## Installation
 
@@ -38,107 +52,55 @@ Home Assistant custom card: `custom:seagull-device-card`.
 
 ```yaml
 type: custom:seagull-device-card
-buttons:
-  entities:
-    - entity: light.living_room
+devices: []
 ```
 
-## Actions
+Tip: start from this minimal config and use the visual editor wizard.
 
-Supported action types:
-- `toggle`
-- `more-info`
-- `navigate`
-- `perform-action`
-- `sequence`
+## Card options
 
-### Example: sequence
+### Layout / look
+
+- `grid_columns` (default: `4`)
+- `grid_gap` (default: `6`)
+- `button_border_radius` (default: `8`)
+- `button_height` (default: `36`)
+- `background_icon_scale` (default: `1.7`) — multiplier relative to `button_height`
+
+### Container
+
+- `background_color` (kept for compatibility)
+- `background_opacity`
+- `border_radius`
+- `border_width`
+- `border_color`
+
+## Config structure
 
 ```yaml
-tap_action:
-  action: sequence
-  sequence:
-    - action: perform-action
-      perform_action: light.turn_on
-      target:
-        entity_id: light.kitchen
-    - delay_ms: 300
-    - action: more-info
+type: custom:seagull-device-card
+grid_columns: 4
+grid_gap: 6
+button_border_radius: 8
+button_height: 36
+background_icon_scale: 1.7
+wizard:
+  area_id: null
+  device_ids: []
+  entity_ids: []
+devices:
+  - device_id: abc123
+    name: Living Room Lights
+    entities:
+      - light.floor_lamp
+      - entity_id: binary_sensor.window_left
+        # Any extra per-entity settings are preserved by wizard.
+        # If unchecked in wizard, this becomes disable: true.
+        unit_of_measurement: false
 ```
 
-Notes:
-- `sequence` can be used as `action: sequence` or as `sequence:` inside any action object
-- Delay steps support `delay_ms`, `delay`, or plain number (milliseconds)
+## Notes
 
-## Key config blocks
-
-### Card-level
-
-- `entity` (optional default entity for templates/actions)
-- `icon`, `icon_color`, `icon_size`
-- `font_family`, `font_weight`, `font_size`
-- `background_color`, `background_opacity`, `border_radius`, `border_width`, `border_color`
-- `tap_action`, `double_tap_action`, `hold_action`
-- `variables`, `text`, `buttons`, `theme`
-
-### Text
-
-- `text.entity`, `text.value`
-- `text.color`, `text.background_color`
-- `text.size`, `text.halign`, `text.valign`
-- `text.padding*`
-- `text.tap_action`, `text.double_tap_action`, `text.hold_action`
-
-### Buttons (layout + defaults)
-
-- Layout: `cols|columns`, `rows`, `size`, `gap`, `padding*`, `align`
-- Text font: `font_family`, `font_weight`, `font_size`
-- Collections: `buttons.entities|items|button|buttons` (array/object), `lights` alias
-- Default style: `icon`, `color`, `background`, `border`, `border_color`, `border_radius`
-- Dynamic behavior: `use_light_color`, `invert_state`, `obsolete`
-- Visibility: `show`, `show_value`, `show_not_value`, `show_above`, `show_below`, `keep_spot`
-- Default actions: `tap_action`, `double_tap_action`, `hold_action`
-
-### Per-button fields
-
-- `entity` (optional if icon-only)
-- `width`
-- `icon`, `text`/`label`, `color`, `background`, `border`, `border_color`, `border_radius`
-- `font_family`, `font_weight`, `font_size`
-- `empty` (explicit blank slot)
-- `tap_action`, `double_tap_action`, `hold_action`
-- `show*`, `keep_spot`, `invert_state`, `obsolete`
-
-Notes:
-- If `text`/`label` is present, icon and text are rendered together (icon on the left).
-- For `width: 1`, if icon + text do not fit, only text is shown.
-- If `icon: false` or `icon: null`, icon is hidden explicitly and only text is shown.
-
-## Theme and palette
-
-`theme` supports:
-- `theme.palette_mode`: `auto | day | night`
-- `theme.palette` with named values (string or `{day, night}`)
-- `theme.card`, `theme.text`, `theme.button`
-
-Use palette values via `$name`:
-
-```yaml
-buttons:
-  background: "$seagull_rose"
-```
-
-Default theme schema is in: `seagull-device-card-theme-default.js`
-
-## Domain defaults
-
-- Active-state mapping:
-  - regular domains: `state == on`
-  - `lock.*`: `state == unlocked`
-  - `media_player.*`: `state == playing`
-- `sensor.*` and `binary_sensor.*` default actions:
-  - tap / hold / double_tap = `more-info`
-
-## Version
-
-Card displays current version badge in editor and logs version in browser console.
+- The editor shows a version pill.
+- The card and loader log version announcements in browser console.
+- Auto-deploy hooks (if enabled in local clone) are in `scripts/` and `.githooks/`.
