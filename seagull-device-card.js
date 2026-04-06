@@ -860,6 +860,15 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this._emitConfigChanged(config);
   }
 
+  _esc(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   _render() {
     const areaGroups = this._areaGroups();
     const prevTreeScrollTop = this.querySelector("#sg-tree")?.scrollTop ?? 0;
@@ -872,8 +881,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
         </div>
 
         <div style="border:1px solid var(--divider-color,#d1d5db);border-radius:12px;padding:12px;background:var(--card-background-color,#fff)">
-          <div style="font-weight:700;margin-bottom:8px;">Entity Wizard</div>
-
           <div id="sg-tree" style="max-height:320px;overflow:auto;border:1px solid var(--divider-color,#d1d5db);border-radius:8px;padding:8px;">
             ${this._wizardError
               ? `<div style="color:#dc2626;">Failed to load HA registries: ${this._wizardError}</div>`
