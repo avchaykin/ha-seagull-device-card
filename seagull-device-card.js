@@ -14,6 +14,7 @@ class SeagullDeviceCard extends HTMLElement {
       grid_gap: 6,
       button_border_radius: 8,
       button_height: 36,
+      background_icon_scale: 1.7,
       wizard: {
         area_id: null,
         device_ids: [],
@@ -81,6 +82,8 @@ class SeagullDeviceCard extends HTMLElement {
     const gap = Math.max(0, Number(this._config.grid_gap ?? 6) || 6);
     const btnRadius = Math.max(0, Number(this._config.button_border_radius ?? 8) || 8);
     const btnHeight = Math.max(18, Number(this._config.button_height ?? 36) || 36);
+    const bgIconScale = Math.max(0.8, Number(this._config.background_icon_scale ?? 1.7) || 1.7);
+    const bgIconSize = Math.max(24, Math.round(btnHeight * bgIconScale));
 
     const renderEntityButton = (entityId) => {
       const st = this._hass?.states?.[entityId];
@@ -103,8 +106,8 @@ class SeagullDeviceCard extends HTMLElement {
       const html = `
         <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:${buttonBg};cursor:pointer;min-height:${btnHeight}px;overflow:hidden;font-family:inherit;">
           ${entityPicture
-            ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:60px;height:60px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
-            : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:60px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
+            ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:${bgIconSize}px;height:${bgIconSize}px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
+            : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:${bgIconSize}px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
           ${(hideText || isUnavailable)
             ? ``
             : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;font-family:inherit;">${this._esc(displayValue)}</span>`}
@@ -183,7 +186,7 @@ class SeagullDeviceCard extends HTMLElement {
         `;
       }).join(`<div style="height:${gap}px;"></div>`);
 
-      deviceBlocks.push(`<div style="display:flex;flex-direction:column;">${blockHtml}</div>`);
+      deviceBlocks.push(`<div style="display:flex;flex-direction:column;background:rgba(148,163,184,0.14);border-radius:10px;padding:8px;">${blockHtml}</div>`);
     }
 
     this._inner.innerHTML = `
