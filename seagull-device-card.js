@@ -491,10 +491,11 @@ class SeagullDeviceCard extends HTMLElement {
 class SeagullDeviceCardEditor extends HTMLElement {
   setConfig(config) {
     this._config = config || { type: "custom:seagull-device-card" };
-    this._selectedAreaId = this._config?.wizard?.area_id || "";
+    this._selectedAreaId = "";
     this._selectedDeviceIds = new Set(this._config?.wizard?.device_ids || []);
     this._selectedEntityIds = new Set(this._config?.wizard?.entity_ids || []);
     this._expandedDeviceIds = this._expandedDeviceIds || new Set();
+    this._expandedAreaIds = this._expandedAreaIds || new Set();
     this._selectionHydrated = false;
     this._wizardLoaded = this._wizardLoaded || false;
     this._render();
@@ -526,9 +527,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
     }
   }
 
-  _areaRows() {
-    if (!this._selectedAreaId) return [];
-
+  _areaRows(areaId = null) {
     const entitiesByDevice = new Map();
     for (const entity of this._entities || []) {
       if (!entity || entity.disabled_by || entity.hidden_by) continue;
@@ -538,12 +537,34 @@ class SeagullDeviceCardEditor extends HTMLElement {
     }
 
     return (this._devices || [])
-      .filter((d) => d && d.area_id === this._selectedAreaId)
+      .filter((d) => d && (areaId == null || d.area_id === areaId))
       .map((device) => ({
         device,
         entities: (entitiesByDevice.get(device.id) || []).sort((a, b) => String(a.entity_id).localeCompare(String(b.entity_id))),
       }))
       .sort((a, b) => String(a.device?.name_by_user || a.device?.name || "").localeCompare(String(b.device?.name_by_user || b.device?.name || "")));
+  }
+
+  _areaGroups() {
+    const areas = Array.isArray(this._areas) ? this._areas : [];
+    const areaMap = new Map(areas.map((a) => [a.area_id, a.name || a.area_id]));
+    const rows = this._areaRows(null);
+    const byArea = new Map();
+
+    rows.forEach((row) => {
+      const key = row.device?.area_id || "__unassigned__";
+      if (!byArea.has(key)) byArea.set(key, []);
+      byArea.get(key).push(row);
+    });
+
+    const groups = [...byArea.entries()].map(([areaId, areaRows]) => ({
+      areaId,
+      areaName: areaId === "__unassigned__" ? "Unassigned" : (areaMap.get(areaId) || areaId),
+      rows: areaRows,
+    }));
+
+    groups.sort((a, b) => String(a.areaName).localeCompare(String(b.areaName)));
+    return groups;
   }
 
   _hydrateSelectionFromConfig() {
@@ -652,9 +673,28 @@ class SeagullDeviceCardEditor extends HTMLElement {
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
   }
 
-  _onAreaChange(value) {
-    this._selectedAreaId = value;
-    this._expandedDeviceIds.clear();
+  _onAreaChange(_value) {}
+
+  _isAreaExpanded(areaId) {
+    return this._expandedAreaIds?.has(areaId);
+  }
+
+  _toggleAreaExpanded(areaId) {
+    if (!this._expandedAreaIds) this._expandedAreaIds = new Set();
+    if (this._expandedAreaIds.has(areaId)) this._expandedAreaIds.delete(areaId);
+    else this._expandedAreaIds.add(areaId);
+    this._render();
+  }
+
+  _toggleArea(areaId, checked, areaRows) {
+    (areaRows || []).forEach(({ device, entities }) => {
+      if (checked) this._selectedDeviceIds.add(device.id);
+      else this._selectedDeviceIds.delete(device.id);
+      (entities || []).forEach((entity) => {
+        if (checked) this._selectedEntityIds.add(entity.entity_id);
+        else this._selectedEntityIds.delete(entity.entity_id);
+      });
+    });
     this._syncConfigFromSelection();
     this._render();
   }
@@ -725,7 +765,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
   }
 
   _syncConfigFromSelection() {
-    const currentRows = this._areaRows();
+    const currentRows = this._areaRows(null);
     const currentAreaDeviceIds = new Set(currentRows.map((r) => r.device.id));
     const selectedFromWizard = this._selectedDevicesFromWizard();
     const selectedMap = new Map(selectedFromWizard.map((d) => [d.device_id, d]));
@@ -821,8 +861,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
   }
 
   _render() {
-    const areas = Array.isArray(this._areas) ? this._areas : [];
-    const rows = this._areaRows();
+    const areaGroups = this._areaGroups();
     const prevTreeScrollTop = this.querySelector("#sg-tree")?.scrollTop ?? 0;
 
     this.innerHTML = `
@@ -835,34 +874,33 @@ class SeagullDeviceCardEditor extends HTMLElement {
         <div style="border:1px solid var(--divider-color,#d1d5db);border-radius:12px;padding:12px;background:var(--card-background-color,#fff)">
           <div style="font-weight:700;margin-bottom:8px;">Entity Wizard</div>
 
-          <div style="margin-bottom:10px;">
-            <div style="font-weight:600;margin-bottom:6px;">1) Выбери area</div>
-            <select id="sg-area" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--divider-color,#d1d5db);">
-              <option value="">— Select area —</option>
-              ${areas.map((a) => `<option value="${a.area_id}" ${a.area_id === this._selectedAreaId ? "selected" : ""}>${a.name || a.area_id}</option>`).join("")}
-            </select>
-          </div>
-
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <button id="sg-all" style="padding:6px 10px;border-radius:8px;border:1px solid #7c3aed;background:#ede9fe;color:#5b21b6;font-weight:700;cursor:pointer;">Select all in area</button>
-            <button id="sg-clear" style="padding:6px 10px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:700;cursor:pointer;">Clear</button>
-          </div>
-
-          <div style="font-weight:600;margin-bottom:6px;">2) Выбери девайсы и сущности</div>
           <div id="sg-tree" style="max-height:320px;overflow:auto;border:1px solid var(--divider-color,#d1d5db);border-radius:8px;padding:8px;">
             ${this._wizardError
               ? `<div style="color:#dc2626;">Failed to load HA registries: ${this._wizardError}</div>`
-              : (!this._selectedAreaId
-                ? `<div style="opacity:.7;">Сначала выбери area.</div>`
-                : (!rows.length
-                  ? `<div style="opacity:.7;">В этой area нет устройств.</div>`
-                  : rows.map(({ device, entities }) => {
+              : (!areaGroups.length
+                ? `<div style="opacity:.7;">Нет доступных устройств.</div>`
+                : areaGroups.map(({ areaId, areaName, rows }) => {
+                    const isAreaExpanded = this._isAreaExpanded(areaId);
+                    const allAreaEntities = rows.flatMap((r) => r.entities || []);
+                    const selectedAreaEntities = allAreaEntities.filter((e) => this._selectedEntityIds.has(e.entity_id)).length;
+                    const areaDeviceIds = rows.map((r) => r.device.id);
+                    const selectedAreaDevices = areaDeviceIds.filter((id) => this._selectedDeviceIds.has(id)).length;
+                    return `
+                      <div style="padding:6px 0;border-bottom:1px solid var(--divider-color,#e5e7eb);">
+                        <div style="display:flex;gap:8px;align-items:center;font-weight:700;">
+                          <button type="button" data-kind="area-expand" data-area-id="${areaId}" style="width:28px;height:28px;border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;color:var(--primary-text-color,#111827);padding:0;display:inline-flex;align-items:center;justify-content:center;">${isAreaExpanded ? "▾" : "▸"}</button>
+                          <input type="checkbox" data-kind="area" data-area-id="${areaId}" data-selected="${selectedAreaEntities}" data-total="${allAreaEntities.length}" ${selectedAreaEntities > 0 && selectedAreaEntities === allAreaEntities.length ? "checked" : ""}>
+                          <span>${this._esc(areaName)}</span>
+                          <span style="opacity:.6;font-weight:500;">(${selectedAreaDevices}/${rows.length} devices)</span>
+                        </div>
+                        ${isAreaExpanded
+                          ? rows.map(({ device, entities }) => {
                     const devName = device.name_by_user || device.name || device.id;
                     const devChecked = this._selectedDeviceIds.has(device.id);
                     const selectedCount = entities.filter((e) => this._selectedEntityIds.has(e.entity_id)).length;
                     const isExpanded = this._isDeviceExpanded(device.id);
                     return `
-                      <div style="padding:6px 0;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
+                      <div style="padding:6px 0 6px 24px;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
                         <div style="display:flex;gap:8px;align-items:center;font-weight:700;">
                           <button type="button" data-kind="expand" data-device-id="${device.id}" style="width:28px;height:28px;border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;color:var(--primary-text-color,#111827);padding:0;display:inline-flex;align-items:center;justify-content:center;">${isExpanded ? "▾" : "▸"}</button>
                           <input type="checkbox" data-kind="device" data-device-id="${device.id}" data-selected="${selectedCount}" data-total="${entities.length}" ${devChecked ? "checked" : ""}>
@@ -885,25 +923,38 @@ class SeagullDeviceCardEditor extends HTMLElement {
                           : ""}
                       </div>
                     `;
-                  }).join("")))}
+                  }).join("")
+                          : ""}
+                      </div>
+                    `;
+                  }).join(""))}
           </div>
 
           <div style="margin-top:10px;opacity:.8;">
-            Выбрано: <b>${this._selectedEntityIds?.size || 0}</b> сущностей, <b>${this._selectedDeviceIds?.size || 0}</b> устройств
+            Выбрано: <b>${this._selectedEntityIds?.size || 0}</b> сущностей, <b>${this._selectedDeviceIds?.size || 0}</b> устройств, <b>${areaGroups.filter((g) => g.rows.some((r) => this._selectedDeviceIds.has(r.device.id))).length}</b> area
           </div>
 
         </div>
       </div>
     `;
 
-    const areaSelect = this.querySelector("#sg-area");
-    if (areaSelect) areaSelect.addEventListener("change", (ev) => this._onAreaChange(ev.target.value));
+    this.querySelectorAll('button[data-kind="area-expand"]').forEach((el) => {
+      el.addEventListener("click", (ev) => {
+        const areaId = ev.currentTarget.getAttribute("data-area-id");
+        this._toggleAreaExpanded(areaId);
+      });
+    });
 
-    const btnAll = this.querySelector("#sg-all");
-    if (btnAll) btnAll.addEventListener("click", () => this._selectAllInArea());
-
-    const btnClear = this.querySelector("#sg-clear");
-    if (btnClear) btnClear.addEventListener("click", () => this._clearSelection());
+    this.querySelectorAll('input[data-kind="area"]').forEach((el) => {
+      const selected = Number(el.getAttribute("data-selected") || 0);
+      const total = Number(el.getAttribute("data-total") || 0);
+      el.indeterminate = selected > 0 && selected < total;
+      el.addEventListener("change", (ev) => {
+        const areaId = ev.target.getAttribute("data-area-id");
+        const group = areaGroups.find((g) => String(g.areaId) === String(areaId));
+        this._toggleArea(areaId, ev.target.checked, group?.rows || []);
+      });
+    });
 
     this.querySelectorAll('button[data-kind="expand"]').forEach((el) => {
       el.addEventListener("click", (ev) => {
@@ -921,7 +972,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this.querySelectorAll('input[data-kind="device"]').forEach((el) => {
       el.addEventListener("change", (ev) => {
         const deviceId = ev.target.getAttribute("data-device-id");
-        const row = rows.find((r) => r.device.id === deviceId);
+        const row = areaGroups.flatMap((g) => g.rows).find((r) => r.device.id === deviceId);
         this._toggleDevice(deviceId, ev.target.checked, row?.entities || []);
       });
     });
@@ -930,7 +981,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
       el.addEventListener("change", (ev) => {
         const deviceId = ev.target.getAttribute("data-device-id");
         const entityId = ev.target.getAttribute("data-entity-id");
-        const row = rows.find((r) => r.device.id === deviceId);
+        const row = areaGroups.flatMap((g) => g.rows).find((r) => r.device.id === deviceId);
         this._toggleEntity(deviceId, entityId, ev.target.checked, row?.entities || []);
       });
     });
