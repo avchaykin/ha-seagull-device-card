@@ -201,7 +201,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
   _hasDeviceCustomConfig(device) {
     if (!device || typeof device !== "object" || Array.isArray(device)) return false;
-    return Object.keys(device).some((k) => k !== "device_id" && k !== "entities");
+    return Object.keys(device).some((k) => k !== "device_id" && k !== "entities" && k !== "name");
   }
 
   _getExistingDevice(deviceId) {
