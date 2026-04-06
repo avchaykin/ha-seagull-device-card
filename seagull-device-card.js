@@ -170,7 +170,7 @@ class SeagullDeviceCard extends HTMLElement {
           const spacer = Math.max(0, cols - r.nameSpan - r.used);
           return `
             <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;align-items:stretch;">
-              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;font-weight:700;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
+              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;font-weight:400;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
               ${spacer > 0 ? `<div style="grid-column:span ${spacer};"></div>` : ""}
               ${rowButtons}
             </div>
@@ -214,16 +214,16 @@ class SeagullDeviceCard extends HTMLElement {
     if (hideText) return 1;
     const text = String(value ?? "");
     const len = text.length;
-    if (len > 42) return Math.min(cols, 3);
-    if (len > 22) return Math.min(cols, 2);
+    if (len > 28) return Math.min(cols, 3);
+    if (len > 14) return Math.min(cols, 2);
     return 1;
   }
 
   _estimateDeviceNameSpan(name, cols) {
     if (cols <= 1) return 1;
     const len = String(name ?? "").length;
-    if (len > 34) return Math.min(cols - 1, 3);
-    if (len > 18) return Math.min(cols - 1, 2);
+    if (len > 24) return Math.min(cols - 1, 3);
+    if (len > 12) return Math.min(cols - 1, 2);
     return 1;
   }
 
