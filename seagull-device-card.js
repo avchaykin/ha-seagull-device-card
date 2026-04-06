@@ -10,6 +10,9 @@ class SeagullDeviceCard extends HTMLElement {
       border_radius: 16,
       border_width: 0,
       border_color: "#9ca3af",
+      grid_columns: 3,
+      grid_gap: 8,
+      button_border_radius: 12,
       wizard: {
         area_id: null,
         device_ids: [],
@@ -84,22 +87,53 @@ class SeagullDeviceCard extends HTMLElement {
       return;
     }
 
+    const cols = Math.max(1, Number(this._config.grid_columns ?? 3) || 3);
+    const gap = Math.max(0, Number(this._config.grid_gap ?? 8) || 8);
+    const btnRadius = Math.max(0, Number(this._config.button_border_radius ?? 12) || 12);
+
     const rows = entityIds.map((entityId) => {
       const st = this._hass?.states?.[entityId];
       const entityPicture = st?.attributes?.entity_picture;
       const icon = this._entityIconForState(entityId, st);
       const value = st?.state ?? "unknown";
+      const span = this._estimateButtonSpan(value, cols);
       return `
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+        <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="grid-column:span ${span};display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:${btnRadius}px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.58);cursor:pointer;min-height:42px;">
           ${entityPicture
             ? `<img src="${this._esc(entityPicture)}" alt="" style="width:20px;height:20px;border-radius:999px;object-fit:cover;">`
             : `<ha-icon icon="${this._esc(icon)}" style="--mdc-icon-size:20px;color:var(--primary-text-color,#111827);"></ha-icon>`}
-          <span style="font-size:14px;color:var(--primary-text-color,#111827);">${this._esc(value)}</span>
-        </div>
+          <span style="font-size:14px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(value)}</span>
+        </button>
       `;
     }).join("");
 
-    this._inner.innerHTML = rows;
+    this._inner.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;grid-auto-flow:row dense;">
+        ${rows}
+      </div>
+    `;
+
+    this._inner.querySelectorAll(".sg-device-btn").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        const entityId = ev.currentTarget.getAttribute("data-entity-id");
+        if (!entityId) return;
+        this.dispatchEvent(
+          new CustomEvent("hass-more-info", {
+            bubbles: true,
+            composed: true,
+            detail: { entityId },
+          })
+        );
+      });
+    });
+  }
+
+  _estimateButtonSpan(value, cols) {
+    const text = String(value ?? "");
+    const len = text.length;
+    if (len > 42) return Math.min(cols, 3);
+    if (len > 22) return Math.min(cols, 2);
+    return 1;
   }
 
   _esc(s) {
