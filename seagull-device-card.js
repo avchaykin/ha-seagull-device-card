@@ -150,9 +150,19 @@ class SeagullDeviceCardEditor extends HTMLElement {
       .sort((a, b) => String(a.device?.name_by_user || a.device?.name || "").localeCompare(String(b.device?.name_by_user || b.device?.name || "")));
   }
 
-  _emitConfigChanged() {
+  _emitConfigChanged(config) {
+    if (!config) return;
+    this._config = config;
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      bubbles: true,
+      composed: true,
+      detail: { config },
+    }));
+  }
+
+  _selectedDevicesFromWizard() {
     const rows = this._areaRows();
-    const devices = rows
+    return rows
       .map(({ device, entities }) => ({
         device_id: device.id,
         name: device.name_by_user || device.name || device.id,
@@ -164,31 +174,57 @@ class SeagullDeviceCardEditor extends HTMLElement {
           })),
       }))
       .filter((d) => d.entities.length > 0);
+  }
 
-    const config = {
-      ...this._config,
-      type: "custom:seagull-device-card",
-      wizard: {
-        area_id: this._selectedAreaId || null,
-        device_ids: [...this._selectedDeviceIds],
-        entity_ids: [...this._selectedEntityIds],
-      },
-      devices,
-    };
+  _mergeDevices(existingDevices, newDevices) {
+    const map = new Map();
 
-    this._config = config;
-    this.dispatchEvent(new CustomEvent("config-changed", {
-      bubbles: true,
-      composed: true,
-      detail: { config },
-    }));
+    for (const dev of Array.isArray(existingDevices) ? existingDevices : []) {
+      if (!dev || !dev.device_id) continue;
+      const entities = Array.isArray(dev.entities) ? dev.entities : [];
+      const entityMap = new Map();
+      entities.forEach((e) => {
+        const entityId = typeof e === "string" ? e : e?.entity_id;
+        if (!entityId) return;
+        entityMap.set(entityId, typeof e === "string" ? { entity_id: entityId, name: entityId } : e);
+      });
+      map.set(dev.device_id, {
+        device_id: dev.device_id,
+        name: dev.name || dev.device_id,
+        entities: entityMap,
+      });
+    }
+
+    for (const dev of Array.isArray(newDevices) ? newDevices : []) {
+      if (!dev || !dev.device_id) continue;
+      if (!map.has(dev.device_id)) {
+        map.set(dev.device_id, {
+          device_id: dev.device_id,
+          name: dev.name || dev.device_id,
+          entities: new Map(),
+        });
+      }
+      const existing = map.get(dev.device_id);
+      (Array.isArray(dev.entities) ? dev.entities : []).forEach((e) => {
+        const entityId = typeof e === "string" ? e : e?.entity_id;
+        if (!entityId) return;
+        existing.entities.set(entityId, typeof e === "string" ? { entity_id: entityId, name: entityId } : e);
+      });
+    }
+
+    return [...map.values()]
+      .map((dev) => ({
+        device_id: dev.device_id,
+        name: dev.name,
+        entities: [...dev.entities.values()].sort((a, b) => String(a.entity_id).localeCompare(String(b.entity_id))),
+      }))
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
   }
 
   _onAreaChange(value) {
     this._selectedAreaId = value;
     this._selectedDeviceIds.clear();
     this._selectedEntityIds.clear();
-    this._emitConfigChanged();
     this._render();
   }
 
@@ -201,7 +237,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
       else this._selectedEntityIds.delete(entity.entity_id);
     }
 
-    this._emitConfigChanged();
     this._render();
   }
 
@@ -213,7 +248,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
     if (allSelected && (deviceEntities || []).length) this._selectedDeviceIds.add(deviceId);
     else this._selectedDeviceIds.delete(deviceId);
 
-    this._emitConfigChanged();
     this._render();
   }
 
@@ -223,27 +257,17 @@ class SeagullDeviceCardEditor extends HTMLElement {
       this._selectedDeviceIds.add(device.id);
       for (const entity of entities) this._selectedEntityIds.add(entity.entity_id);
     }
-    this._emitConfigChanged();
     this._render();
   }
 
   _clearSelection() {
     this._selectedDeviceIds.clear();
     this._selectedEntityIds.clear();
-    this._emitConfigChanged();
     this._render();
   }
 
   _buildYamlConfig() {
-    const rows = this._areaRows();
-    const selectedDevices = rows
-      .map(({ device, entities }) => ({
-        name: device.name_by_user || device.name || device.id,
-        entities: entities
-          .filter((e) => this._selectedEntityIds.has(e.entity_id))
-          .map((e) => e.entity_id),
-      }))
-      .filter((d) => d.entities.length > 0);
+    const mergedDevices = this._mergeDevices(this._config?.devices, this._selectedDevicesFromWizard());
 
     const lines = [
       "type: custom:seagull-device-card",
@@ -259,13 +283,14 @@ class SeagullDeviceCardEditor extends HTMLElement {
     }
 
     lines.push("devices:");
-    if (!selectedDevices.length) {
+    if (!mergedDevices.length) {
       lines.push("  []");
     } else {
-      selectedDevices.forEach((device) => {
+      mergedDevices.forEach((device) => {
         lines.push(`  - name: \"${String(device.name).replaceAll('"', '\\"')}\"`);
         lines.push("    entities:");
-        device.entities.forEach((entityId) => {
+        device.entities.forEach((entity) => {
+          const entityId = typeof entity === "string" ? entity : entity.entity_id;
           lines.push(`      - ${entityId}`);
         });
       });
@@ -275,6 +300,17 @@ class SeagullDeviceCardEditor extends HTMLElement {
   }
 
   _onCreateConfig() {
+    const config = {
+      ...this._config,
+      type: "custom:seagull-device-card",
+      wizard: {
+        area_id: this._selectedAreaId || null,
+        device_ids: [...this._selectedDeviceIds],
+        entity_ids: [...this._selectedEntityIds],
+      },
+      devices: this._mergeDevices(this._config?.devices, this._selectedDevicesFromWizard()),
+    };
+    this._emitConfigChanged(config);
     this._generatedYaml = this._buildYamlConfig();
     this._render();
   }
@@ -335,10 +371,10 @@ class SeagullDeviceCardEditor extends HTMLElement {
                     const devChecked = this._selectedDeviceIds.has(device.id);
                     const selectedCount = entities.filter((e) => this._selectedEntityIds.has(e.entity_id)).length;
                     return `
-                      <details open style="padding:6px 0;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
+                      <details style="padding:6px 0;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
                         <summary style="list-style:none;cursor:pointer;">
                           <label style="display:flex;gap:8px;align-items:center;font-weight:700;">
-                            <input type="checkbox" data-kind="device" data-device-id="${device.id}" ${devChecked ? "checked" : ""}>
+                            <input type="checkbox" data-kind="device" data-device-id="${device.id}" data-selected="${selectedCount}" data-total="${entities.length}" ${devChecked ? "checked" : ""}>
                             <span>${devName}</span>
                             <span style="opacity:.6;font-weight:500;">(${selectedCount}/${entities.length})</span>
                           </label>
@@ -391,6 +427,12 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
     const btnCopyYaml = this.querySelector("#sg-copy-yaml");
     if (btnCopyYaml) btnCopyYaml.addEventListener("click", () => this._copyYaml());
+
+    this.querySelectorAll('input[data-kind="device"]').forEach((el) => {
+      const selected = Number(el.getAttribute("data-selected") || 0);
+      const total = Number(el.getAttribute("data-total") || 0);
+      el.indeterminate = selected > 0 && selected < total;
+    });
 
     this.querySelectorAll('input[data-kind="device"]').forEach((el) => {
       el.addEventListener("change", (ev) => {
