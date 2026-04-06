@@ -98,11 +98,12 @@ class SeagullDeviceCard extends HTMLElement {
       const entityPicture = st?.attributes?.entity_picture;
       const icon = this._entityIconForState(entityId, st);
       const value = st?.state ?? "unknown";
+      const displayValue = this._formatEntityValue(entityId, st);
       const isUnavailable = String(st?.state ?? "") === "unavailable";
       const isToggle = this._isToggleEntity(entityId, st);
       const isActive = this._isEntityActiveState(entityId, st?.state);
-      const span = this._estimateButtonSpan(value, cols, isToggle);
-      const textSize = this._fitTextSize(value, span, cols, gap);
+      const span = this._estimateButtonSpan(displayValue, cols, isToggle);
+      const textSize = this._fitTextSize(displayValue, span, cols, gap);
       const iconFg = isActive ? "#7c3aed" : "#6b7280";
       const bgIconOpacity = isToggle ? 0.42 : 0.18;
       const buttonBg = isUnavailable
@@ -115,7 +116,7 @@ class SeagullDeviceCard extends HTMLElement {
             : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:60px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
           ${isToggle
             ? ``
-            : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;">${this._esc(value)}</span>`}
+            : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;">${this._esc(displayValue)}</span>`}
         </button>
       `;
     }).join("");
@@ -180,6 +181,32 @@ class SeagullDeviceCard extends HTMLElement {
     ]);
     if (toggleDomains.has(domain)) return true;
     return !!stateObj?.attributes?.assumed_state;
+  }
+
+  _getEntityConfig(entityId) {
+    const devices = Array.isArray(this._config?.devices) ? this._config.devices : [];
+    for (const device of devices) {
+      const entities = Array.isArray(device?.entities) ? device.entities : [];
+      for (const entity of entities) {
+        if (typeof entity === "string") {
+          if (entity === entityId) return null;
+          continue;
+        }
+        if (entity?.entity_id === entityId) return entity;
+      }
+    }
+    return null;
+  }
+
+  _formatEntityValue(entityId, stateObj) {
+    const state = stateObj?.state ?? "unknown";
+    const attrs = stateObj?.attributes || {};
+    const unit = attrs.unit_of_measurement;
+    const entityCfg = this._getEntityConfig(entityId);
+    const unitAllowed = entityCfg?.unit_of_measurement !== false;
+
+    if (!unit || !unitAllowed) return String(state);
+    return `${state} ${unit}`;
   }
 
   _isEntityActiveState(entityId, state) {
