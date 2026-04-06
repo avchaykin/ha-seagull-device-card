@@ -105,8 +105,8 @@ class SeagullDeviceCard extends HTMLElement {
       return `
         <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.58);cursor:pointer;min-height:27px;overflow:hidden;">
           ${entityPicture
-            ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:60px;height:60px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
-            : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);--mdc-icon-size:60px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
+            ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:60px;height:60px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
+            : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:60px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
           ${isToggle
             ? ``
             : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;">${this._esc(value)}</span>`}
