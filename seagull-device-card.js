@@ -101,6 +101,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this._selectedAreaId = this._config?.wizard?.area_id || "";
     this._selectedDeviceIds = new Set(this._config?.wizard?.device_ids || []);
     this._selectedEntityIds = new Set(this._config?.wizard?.entity_ids || []);
+    this._expandedDeviceIds = new Set();
     this._wizardLoaded = false;
     this._render();
     this._ensureWizardData();
@@ -225,6 +226,18 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this._selectedAreaId = value;
     this._selectedDeviceIds.clear();
     this._selectedEntityIds.clear();
+    this._expandedDeviceIds.clear();
+    this._render();
+  }
+
+  _isDeviceExpanded(deviceId) {
+    return this._expandedDeviceIds?.has(deviceId);
+  }
+
+  _toggleDeviceExpanded(deviceId) {
+    if (!this._expandedDeviceIds) this._expandedDeviceIds = new Set();
+    if (this._expandedDeviceIds.has(deviceId)) this._expandedDeviceIds.delete(deviceId);
+    else this._expandedDeviceIds.add(deviceId);
     this._render();
   }
 
@@ -370,28 +383,30 @@ class SeagullDeviceCardEditor extends HTMLElement {
                     const devName = device.name_by_user || device.name || device.id;
                     const devChecked = this._selectedDeviceIds.has(device.id);
                     const selectedCount = entities.filter((e) => this._selectedEntityIds.has(e.entity_id)).length;
+                    const isExpanded = this._isDeviceExpanded(device.id);
                     return `
-                      <details style="padding:6px 0;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
-                        <summary style="list-style:none;cursor:pointer;">
-                          <label style="display:flex;gap:8px;align-items:center;font-weight:700;">
-                            <input type="checkbox" data-kind="device" data-device-id="${device.id}" data-selected="${selectedCount}" data-total="${entities.length}" ${devChecked ? "checked" : ""}>
-                            <span>${devName}</span>
-                            <span style="opacity:.6;font-weight:500;">(${selectedCount}/${entities.length})</span>
-                          </label>
-                        </summary>
-                        <div style="padding:8px 0 0 26px;display:flex;flex-direction:column;gap:4px;">
-                          ${entities.map((entity) => {
-                            const checked = this._selectedEntityIds.has(entity.entity_id);
-                            return `
-                              <label style="display:flex;gap:8px;align-items:center;">
-                                <input type="checkbox" data-kind="entity" data-device-id="${device.id}" data-entity-id="${entity.entity_id}" ${checked ? "checked" : ""}>
-                                <span>${entity.name || entity.original_name || entity.entity_id}</span>
-                                <code style="opacity:.65;">${entity.entity_id}</code>
-                              </label>
-                            `;
-                          }).join("")}
+                      <div style="padding:6px 0;border-bottom:1px dashed var(--divider-color,#e5e7eb);">
+                        <div style="display:flex;gap:8px;align-items:center;font-weight:700;">
+                          <button type="button" data-kind="expand" data-device-id="${device.id}" style="width:22px;height:22px;border:1px solid var(--divider-color,#d1d5db);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;line-height:1;">${isExpanded ? "▾" : "▸"}</button>
+                          <input type="checkbox" data-kind="device" data-device-id="${device.id}" data-selected="${selectedCount}" data-total="${entities.length}" ${devChecked ? "checked" : ""}>
+                          <span>${devName}</span>
+                          <span style="opacity:.6;font-weight:500;">(${selectedCount}/${entities.length})</span>
                         </div>
-                      </details>
+                        ${isExpanded
+                          ? `<div style="padding:8px 0 0 30px;display:flex;flex-direction:column;gap:4px;">
+                              ${entities.map((entity) => {
+                                const checked = this._selectedEntityIds.has(entity.entity_id);
+                                return `
+                                  <label style="display:flex;gap:8px;align-items:center;">
+                                    <input type="checkbox" data-kind="entity" data-device-id="${device.id}" data-entity-id="${entity.entity_id}" ${checked ? "checked" : ""}>
+                                    <span>${entity.name || entity.original_name || entity.entity_id}</span>
+                                    <code style="opacity:.65;">${entity.entity_id}</code>
+                                  </label>
+                                `;
+                              }).join("")}
+                            </div>`
+                          : ""}
+                      </div>
                     `;
                   }).join("")))}
           </div>
@@ -427,6 +442,13 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
     const btnCopyYaml = this.querySelector("#sg-copy-yaml");
     if (btnCopyYaml) btnCopyYaml.addEventListener("click", () => this._copyYaml());
+
+    this.querySelectorAll('button[data-kind="expand"]').forEach((el) => {
+      el.addEventListener("click", (ev) => {
+        const deviceId = ev.currentTarget.getAttribute("data-device-id");
+        this._toggleDeviceExpanded(deviceId);
+      });
+    });
 
     this.querySelectorAll('input[data-kind="device"]').forEach((el) => {
       const selected = Number(el.getAttribute("data-selected") || 0);
