@@ -19,7 +19,8 @@ class SeagullDeviceCard extends HTMLElement {
       badge: {
         type: "last_changed",
         color: [
-          { delay: 60, value: "#facc15" },
+          { delay: 60, value: "#22c55e" },
+          { delay: 360, value: "#facc15" },
           { delay: 720, value: "#f97316" },
           { delay: 1440, value: "#ef4444" },
         ],
@@ -405,7 +406,8 @@ class SeagullDeviceCard extends HTMLElement {
     const badge = this._config?.badge;
 
     const defaultStops = [
-      { delay: 60, value: "#facc15" },
+      { delay: 60, value: "#22c55e" },
+      { delay: 360, value: "#facc15" },
       { delay: 720, value: "#f97316" },
       { delay: 1440, value: "#ef4444" },
     ];
