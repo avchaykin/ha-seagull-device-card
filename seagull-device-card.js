@@ -16,6 +16,14 @@ class SeagullDeviceCard extends HTMLElement {
       button_height: 36,
       background_icon_scale: 1.7,
       hide_unavailable: false,
+      badge: {
+        type: "last_changed",
+        color: [
+          { delay: 60, value: "#facc15" },
+          { delay: 720, value: "#f97316" },
+          { delay: 1440, value: "#ef4444" },
+        ],
+      },
       wizard: {
         area_id: null,
         device_ids: [],
@@ -103,6 +111,7 @@ class SeagullDeviceCard extends HTMLElement {
         ? ((domain === "light" || domain === "switch") ? "#f59e0b" : "#7c3aed")
         : "#6b7280";
       const bgIconOpacity = hideText ? 0.42 : 0.18;
+      const badgeColor = this._badgeColorForEntity(st);
       const buttonBg = isUnavailable
         ? (isDark
           ? "repeating-linear-gradient(-45deg, rgba(100,116,139,0.45) 0 8px, rgba(71,85,105,0.65) 8px 16px)"
@@ -110,6 +119,7 @@ class SeagullDeviceCard extends HTMLElement {
         : (isDark ? "#1f2937" : "#eeeeee");
       const html = `
         <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:${buttonBg};cursor:pointer;min-height:${btnHeight}px;overflow:hidden;font-family:inherit;">
+          ${badgeColor ? `<span style="position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:999px;background:${this._esc(badgeColor)};z-index:2;"></span>` : ""}
           ${entityPicture
             ? `<img src="${this._esc(entityPicture)}" alt="" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);width:${bgIconSize}px;height:${bgIconSize}px;border-radius:999px;object-fit:cover;opacity:${bgIconOpacity};pointer-events:none;">`
             : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:${bgIconSize}px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
@@ -341,6 +351,43 @@ class SeagullDeviceCard extends HTMLElement {
     if (domain === "cover") return st === "open" || st === "opening";
     if (domain === "vacuum") return st === "cleaning";
     return st === "on";
+  }
+
+  _badgeColorForEntity(stateObj) {
+    const badge = this._config?.badge;
+    if (!badge || typeof badge !== "object") return null;
+
+    const type = badge.type === "last_updated" ? "last_updated" : "last_changed";
+    const ts = stateObj?.[type];
+    if (!ts) return null;
+
+    const parsed = Date.parse(ts);
+    if (!Number.isFinite(parsed)) return null;
+
+    const elapsedMin = (Date.now() - parsed) / 60000;
+    if (!Number.isFinite(elapsedMin) || elapsedMin < 0) return null;
+
+    const defaultStops = [
+      { delay: 60, value: "#facc15" },
+      { delay: 720, value: "#f97316" },
+      { delay: 1440, value: "#ef4444" },
+    ];
+
+    const stopsRaw = Array.isArray(badge.color) ? badge.color : defaultStops;
+    const stops = stopsRaw
+      .map((s) => ({ delay: Number(s?.delay), value: s?.value }))
+      .filter((s) => Number.isFinite(s.delay) && s.delay >= 0 && typeof s.value === "string" && s.value)
+      .sort((a, b) => a.delay - b.delay);
+
+    if (!stops.length) return null;
+
+    let color = null;
+    for (const stop of stops) {
+      if (elapsedMin >= stop.delay) color = stop.value;
+      else break;
+    }
+
+    return color;
   }
 
   _esc(s) {
