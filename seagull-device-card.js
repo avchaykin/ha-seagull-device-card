@@ -85,6 +85,8 @@ class SeagullDeviceCard extends HTMLElement {
     const btnHeight = Math.max(18, Number(this._config.button_height ?? 36) || 36);
     const bgIconScale = Math.max(0.8, Number(this._config.background_icon_scale ?? 1.7) || 1.7);
     const bgIconSize = Math.max(24, Math.round(btnHeight * bgIconScale));
+    const isDark = !!this._hass?.themes?.darkMode;
+    const primaryTextColor = isDark ? "#e5e7eb" : "var(--primary-text-color,#111827)";
 
     const renderEntityButton = (entityId) => {
       const st = this._hass?.states?.[entityId];
@@ -102,8 +104,10 @@ class SeagullDeviceCard extends HTMLElement {
         : "#6b7280";
       const bgIconOpacity = hideText ? 0.42 : 0.18;
       const buttonBg = isUnavailable
-        ? "repeating-linear-gradient(-45deg, rgba(148,163,184,0.35) 0 8px, rgba(203,213,225,0.55) 8px 16px)"
-        : "#eeeeee";
+        ? (isDark
+          ? "repeating-linear-gradient(-45deg, rgba(100,116,139,0.45) 0 8px, rgba(71,85,105,0.65) 8px 16px)"
+          : "repeating-linear-gradient(-45deg, rgba(148,163,184,0.35) 0 8px, rgba(203,213,225,0.55) 8px 16px)")
+        : (isDark ? "#1f2937" : "#eeeeee");
       const html = `
         <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:${buttonBg};cursor:pointer;min-height:${btnHeight}px;overflow:hidden;font-family:inherit;">
           ${entityPicture
@@ -111,7 +115,7 @@ class SeagullDeviceCard extends HTMLElement {
             : `<ha-icon icon="${this._esc(icon)}" style="position:absolute;left:-2px;top:50%;transform:translateY(-50%);--mdc-icon-size:${bgIconSize}px;color:${iconFg};opacity:${bgIconOpacity};pointer-events:none;"></ha-icon>`}
           ${(hideText || isUnavailable)
             ? ``
-            : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:clip;font-family:inherit;">${this._esc(displayValue)}</span>`}
+            : `<span style="position:relative;z-index:1;display:block;max-width:100%;text-align:center;font-size:${textSize}px;color:${primaryTextColor};white-space:nowrap;overflow:hidden;text-overflow:clip;font-family:inherit;">${this._esc(displayValue)}</span>`}
         </button>
       `;
       return { span, html };
@@ -176,7 +180,7 @@ class SeagullDeviceCard extends HTMLElement {
           const spacer = Math.max(0, cols - r.nameSpan - r.used);
           return `
             <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;align-items:stretch;">
-              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;padding-left:6px;font-weight:700;font-size:15px;color:var(--primary-text-color,#111827);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
+              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;padding-left:6px;font-weight:700;font-size:15px;color:${primaryTextColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
               ${spacer > 0 ? `<div style="grid-column:span ${spacer};"></div>` : ""}
               ${rowButtons}
             </div>
@@ -192,7 +196,7 @@ class SeagullDeviceCard extends HTMLElement {
         `;
       }).join(`<div style="height:${gap}px;"></div>`);
 
-      deviceBlocks.push(`<div style="display:flex;flex-direction:column;background:rgba(148,163,184,0.04);border-radius:10px;padding:8px;">${blockHtml}</div>`);
+      deviceBlocks.push(`<div style="display:flex;flex-direction:column;background:${isDark ? "rgba(51,65,85,0.45)" : "rgba(148,163,184,0.04)"};border-radius:10px;padding:8px;">${blockHtml}</div>`);
     }
 
     this._inner.innerHTML = `
