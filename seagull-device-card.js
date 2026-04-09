@@ -368,20 +368,12 @@ class SeagullDeviceCard extends HTMLElement {
 
   _badgeColorForDevice(entityIds) {
     if (!Array.isArray(entityIds) || !entityIds.length) return null;
-    const times = entityIds
-      .map((entityId) => this._hass?.states?.[entityId])
-      .map((st) => {
-        const badge = this._config?.badge;
-        const type = badge?.type === "last_updated" ? "last_updated" : "last_changed";
-        const ts = st?.[type];
-        const parsed = ts ? Date.parse(ts) : NaN;
-        return Number.isFinite(parsed) ? parsed : null;
-      })
-      .filter((v) => v != null);
+    const ages = entityIds
+      .map((entityId) => this._badgeAgeMinutesForState(this._hass?.states?.[entityId]))
+      .filter((v) => Number.isFinite(v));
 
-    if (!times.length) return null;
-    const minTs = Math.min(...times);
-    const elapsedMin = (Date.now() - minTs) / 60000;
+    if (!ages.length) return null;
+    const elapsedMin = Math.min(...ages);
     return this._badgeColorFromElapsed(elapsedMin);
   }
 
