@@ -52,7 +52,27 @@ class SeagullDeviceCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._ensureDeviceRegistry();
     this._render();
+  }
+
+  async _ensureDeviceRegistry() {
+    if (!this._hass?.connection || this._deviceRegistryLoaded) return;
+    this._deviceRegistryLoaded = true;
+    try {
+      const devices = await this._hass.connection.sendMessagePromise({ type: "config/device_registry/list" });
+      this._deviceNameById = new Map(
+        (Array.isArray(devices) ? devices : []).map((d) => [d.id, d.name_by_user || d.name || d.id])
+      );
+      this._render();
+    } catch (_e) {
+      // ignore; card will fallback to config/device_id names
+    }
+  }
+
+  _displayDeviceName(device) {
+    const id = device?.device_id;
+    return this._deviceNameById?.get(id) || device?.name || id || "Device";
   }
 
   getCardSize() {
@@ -172,7 +192,7 @@ class SeagullDeviceCard extends HTMLElement {
       const areaDeviceBlocks = [];
 
       for (const device of area.devices) {
-      const deviceName = String(device?.name || device?.device_id || "Device");
+      const deviceName = String(this._displayDeviceName(device));
       const rawEntities = Array.isArray(device?.entities) ? device.entities : [];
       const buttons = rawEntities
         .map((e) => (typeof e === "string" ? e : e?.entity_id))
@@ -817,7 +837,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
     return rows
       .map(({ device, entities }) => ({
         device_id: device.id,
-        name: device.name_by_user || device.name || device.id,
         area_id: device.area_id || null,
         area_name: device.area_id ? (areaNameById.get(device.area_id) || device.area_id) : "Unassigned",
         entities: entities
@@ -1073,7 +1092,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
       const outDev = {
         device_id: dev.device_id,
-        name: selectedDev?.name || dev.name || dev.device_id,
         area_id: selectedDev?.area_id ?? dev.area_id ?? null,
         area_name: selectedDev?.area_name || dev.area_name || (selectedDev?.area_id || dev.area_id || "Unassigned"),
         entities: mergedEntities.sort((a, b) => String(this._entityId(a)).localeCompare(String(this._entityId(b)))),
@@ -1098,7 +1116,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
       if (!entities.length) continue;
       result.push({
         device_id: deviceId,
-        name: selectedDev.name || deviceId,
         area_id: selectedDev.area_id ?? null,
         area_name: selectedDev.area_name || (selectedDev.area_id || "Unassigned"),
         entities,
