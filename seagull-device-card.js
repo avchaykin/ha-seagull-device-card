@@ -255,8 +255,8 @@ class SeagullDeviceCard extends HTMLElement {
     }
 
       const areaCollapsed = this._collapsedAreaIds.has(area.areaId);
-      const areaHeader = `<button class="sg-area-header" data-area-id="${this._esc(area.areaId)}" style="display:flex;align-items:center;gap:10px;font-size:24px;font-weight:700;opacity:.95;color:${primaryTextColor};padding:6px 14px;border-radius:12px;background:${isDark ? "rgba(30,41,59,0.75)" : "rgba(148,163,184,0.20)"};border:none;cursor:pointer;font-family:inherit;text-align:left;line-height:1.1;">
-        <span style="font-size:20px;line-height:1;">${areaCollapsed ? "▸" : "▾"}</span>
+      const areaHeader = `<button class="sg-area-header" data-area-id="${this._esc(area.areaId)}" style="display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;opacity:.95;color:${primaryTextColor};padding:5px 12px;border-radius:12px;background:${isDark ? "rgba(30,41,59,0.75)" : "rgba(148,163,184,0.20)"};border:none;cursor:pointer;font-family:inherit;text-align:left;line-height:1.1;">
+        <span style="font-size:24px;line-height:1;">${areaCollapsed ? "▸" : "▾"}</span>
         <span>${this._esc(area.areaName)}</span>
       </button>`;
 
