@@ -281,6 +281,19 @@ class SeagullDeviceCard extends HTMLElement {
       el.addEventListener("click", (ev) => {
         const deviceId = ev.currentTarget.getAttribute("data-device-id");
         if (!deviceId) return;
+        // Preferred path for Device Info popup in HA
+        this.dispatchEvent(
+          new CustomEvent("hass-show-dialog", {
+            bubbles: true,
+            composed: true,
+            detail: {
+              dialogTag: "ha-device-info-dialog",
+              dialogParams: { deviceId },
+            },
+          })
+        );
+
+        // Compatibility fallback
         this.dispatchEvent(
           new CustomEvent("hass-more-info", {
             bubbles: true,
@@ -765,7 +778,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
   _hasDeviceCustomConfig(device) {
     if (!device || typeof device !== "object" || Array.isArray(device)) return false;
-    return Object.keys(device).some((k) => k !== "device_id" && k !== "entities" && k !== "name" && k !== "disable");
+    return Object.keys(device).some((k) => !["device_id", "entities", "name", "disable", "area_id", "area_name"].includes(k));
   }
 
   _isDisabled(item) {
