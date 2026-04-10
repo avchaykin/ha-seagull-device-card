@@ -929,6 +929,11 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
     const excludedPatterns = ["identify", "firmware", "battery_voltage", "battery voltage"];
     if (excludedPatterns.some((p) => entityId.includes(p) || name.includes(p))) return false;
+    if (category === "diagnostic") {
+      const dc = String(entity?.device_class || "").toLowerCase();
+      const allowDiagnostic = ["battery", "temperature"].some((k) => entityId.includes(k) || name.includes(k) || dc.includes(k));
+      if (!allowDiagnostic) return false;
+    }
     if (category === "config" || category === "configuration") return false;
 
     const sensorDomains = new Set(["sensor", "binary_sensor"]);
