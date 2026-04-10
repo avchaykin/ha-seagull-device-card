@@ -16,6 +16,7 @@ class SeagullDeviceCard extends HTMLElement {
       button_height: 36,
       background_icon_scale: 1.7,
       hide_unavailable: false,
+      sort: true,
       badge: {
         type: "last_changed",
         color: [
@@ -133,10 +134,35 @@ class SeagullDeviceCard extends HTMLElement {
       return { span, html, entityId };
     };
 
+    const sortEnabled = this._config?.sort !== false;
+    const areaOrder = [];
+    const areaMap = new Map();
+
+    for (const device of devices) {
+      const areaId = device?.area_id || "__unassigned__";
+      const areaName = String(device?.area_name || (areaId === "__unassigned__" ? "Unassigned" : areaId));
+      if (!areaMap.has(areaId)) {
+        areaMap.set(areaId, { areaId, areaName, devices: [] });
+        areaOrder.push(areaId);
+      }
+      areaMap.get(areaId).devices.push(device);
+    }
+
+    const areas = areaOrder.map((id) => areaMap.get(id));
+    if (sortEnabled) {
+      areas.sort((a, b) => String(a.areaName).localeCompare(String(b.areaName)));
+      areas.forEach((a) => {
+        a.devices.sort((d1, d2) => String(d1?.name || d1?.device_id || "").localeCompare(String(d2?.name || d2?.device_id || "")));
+      });
+    }
+
     const deviceBlocks = [];
     const globalSeen = new Set();
 
-    for (const device of devices) {
+    for (const area of areas) {
+      const areaDeviceBlocks = [];
+
+      for (const device of area.devices) {
       const deviceName = String(device?.name || device?.device_id || "Device");
       const rawEntities = Array.isArray(device?.entities) ? device.entities : [];
       const buttons = rawEntities
@@ -211,10 +237,22 @@ class SeagullDeviceCard extends HTMLElement {
         `;
       }).join(`<div style="height:${gap}px;"></div>`);
 
-      deviceBlocks.push(`
+      areaDeviceBlocks.push(`
         <div style="position:relative;display:flex;flex-direction:column;background:${isDark ? "rgba(51,65,85,0.45)" : "rgba(148,163,184,0.04)"};border-radius:10px;padding:8px;">
           ${deviceBadgeColor ? `<span style="position:absolute;left:6px;top:6px;width:8px;height:8px;border-radius:999px;background:${this._esc(deviceBadgeColor)};z-index:2;"></span>` : ""}
           ${blockHtml}
+        </div>
+      `);
+    }
+
+      const areaHeader = areas.length > 1
+        ? `<div style="font-size:12px;font-weight:700;opacity:.75;color:${primaryTextColor};padding:0 2px;">${this._esc(area.areaName)}</div>`
+        : "";
+
+      deviceBlocks.push(`
+        <div style="display:flex;flex-direction:column;gap:${gap}px;">
+          ${areaHeader}
+          ${areaDeviceBlocks.join("")}
         </div>
       `);
     }
@@ -701,11 +739,14 @@ class SeagullDeviceCardEditor extends HTMLElement {
   }
 
   _selectedDevicesFromWizard() {
-    const rows = this._areaRows();
+    const rows = this._areaRows(null);
+    const areaNameById = new Map((this._areas || []).map((a) => [a.area_id, a.name || a.area_id]));
     return rows
       .map(({ device, entities }) => ({
         device_id: device.id,
         name: device.name_by_user || device.name || device.id,
+        area_id: device.area_id || null,
+        area_name: device.area_id ? (areaNameById.get(device.area_id) || device.area_id) : "Unassigned",
         entities: entities
           .filter((e) => this._selectedEntityIds.has(e.entity_id))
           .map((e) => e.entity_id),
@@ -954,6 +995,8 @@ class SeagullDeviceCardEditor extends HTMLElement {
       const outDev = {
         device_id: dev.device_id,
         name: selectedDev?.name || dev.name || dev.device_id,
+        area_id: selectedDev?.area_id ?? dev.area_id ?? null,
+        area_name: selectedDev?.area_name || dev.area_name || (selectedDev?.area_id || dev.area_id || "Unassigned"),
         entities: mergedEntities.sort((a, b) => String(this._entityId(a)).localeCompare(String(this._entityId(b)))),
       };
 
@@ -974,7 +1017,13 @@ class SeagullDeviceCardEditor extends HTMLElement {
     for (const [deviceId, selectedDev] of selectedMap.entries()) {
       const entities = (selectedDev.entities || []).map((e) => this._entityId(e)).filter(Boolean).sort();
       if (!entities.length) continue;
-      result.push({ device_id: deviceId, name: selectedDev.name || deviceId, entities });
+      result.push({
+        device_id: deviceId,
+        name: selectedDev.name || deviceId,
+        area_id: selectedDev.area_id ?? null,
+        area_name: selectedDev.area_name || (selectedDev.area_id || "Unassigned"),
+        entities,
+      });
     }
 
     const config = {
