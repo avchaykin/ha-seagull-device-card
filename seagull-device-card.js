@@ -276,45 +276,68 @@ class SeagullDeviceCard extends HTMLElement {
     });
 
     this._inner.querySelectorAll(".sg-device-title").forEach((el) => {
-      el.addEventListener("click", (ev) => {
+      el.addEventListener("click", async (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
         const deviceId = ev.currentTarget.getAttribute("data-device-id");
         if (!deviceId) return;
-        // Preferred path for Device Info popup in HA
-        this.dispatchEvent(
-          new CustomEvent("hass-show-dialog", {
-            bubbles: true,
-            composed: true,
-            detail: {
-              dialogTag: "ha-device-info-dialog",
-              dialogParams: { deviceId },
-            },
-          })
-        );
-
-        // Extra compatibility path used by some HA builds
-        this.dispatchEvent(
-          new CustomEvent("show-dialog", {
-            bubbles: true,
-            composed: true,
-            detail: {
-              dialogTag: "ha-device-info-dialog",
-              dialogParams: { deviceId },
-            },
-          })
-        );
-
-        // Compatibility fallback
-        this.dispatchEvent(
-          new CustomEvent("hass-more-info", {
-            bubbles: true,
-            composed: true,
-            detail: { deviceId },
-          })
-        );
+        await this._openDeviceInfo(deviceId);
       });
     });
+  }
+
+  async _openDeviceInfo(deviceId) {
+    if (!deviceId) return;
+
+    try {
+      if (window.loadCardHelpers) {
+        const helpers = await window.loadCardHelpers();
+        if (helpers?.showDeviceInfoDialog) {
+          helpers.showDeviceInfoDialog(this, { deviceId });
+          return;
+        }
+      }
+    } catch (_e) {
+      // continue to fallbacks
+    }
+
+    this.dispatchEvent(
+      new CustomEvent("hass-show-dialog", {
+        bubbles: true,
+        composed: true,
+        detail: {
+          dialogTag: "ha-device-info-dialog",
+          dialogParams: { deviceId },
+        },
+      })
+    );
+
+    this.dispatchEvent(
+      new CustomEvent("show-dialog", {
+        bubbles: true,
+        composed: true,
+        detail: {
+          dialogTag: "ha-device-info-dialog",
+          dialogParams: { deviceId },
+        },
+      })
+    );
+
+    this.dispatchEvent(
+      new CustomEvent("hass-more-info", {
+        bubbles: true,
+        composed: true,
+        detail: { deviceId },
+      })
+    );
+
+    try {
+      const url = `/config/devices/device/${encodeURIComponent(deviceId)}`;
+      window.history.pushState(null, "", url);
+      window.dispatchEvent(new Event("location-changed"));
+    } catch (_e) {
+      // ignore
+    }
   }
 
   _estimateButtonSpan(value, cols, hideText = false) {
