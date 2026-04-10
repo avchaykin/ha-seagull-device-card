@@ -193,7 +193,9 @@ class SeagullDeviceCard extends HTMLElement {
           const spacer = Math.max(0, cols - r.nameSpan - r.used);
           return `
             <div style="display:grid;grid-template-columns:repeat(${cols}, minmax(0,1fr));gap:${gap}px;align-items:stretch;">
-              <div style="grid-column:span ${r.nameSpan};display:flex;align-items:center;padding-left:6px;font-weight:700;font-size:15px;color:${primaryTextColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(r.name)}</div>
+              <button class="sg-device-title" data-device-id="${this._esc(device.device_id)}" style="grid-column:span ${r.nameSpan};display:flex;align-items:center;padding-left:6px;font-weight:700;font-size:15px;color:${primaryTextColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;">
+                ${this._esc(r.name)}
+              </button>
               ${spacer > 0 ? `<div style="grid-column:span ${spacer};"></div>` : ""}
               ${rowButtons}
             </div>
@@ -232,6 +234,20 @@ class SeagullDeviceCard extends HTMLElement {
             bubbles: true,
             composed: true,
             detail: { entityId },
+          })
+        );
+      });
+    });
+
+    this._inner.querySelectorAll(".sg-device-title").forEach((el) => {
+      el.addEventListener("click", (ev) => {
+        const deviceId = ev.currentTarget.getAttribute("data-device-id");
+        if (!deviceId) return;
+        this.dispatchEvent(
+          new CustomEvent("hass-more-info", {
+            bubbles: true,
+            composed: true,
+            detail: { deviceId },
           })
         );
       });
