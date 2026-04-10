@@ -929,7 +929,7 @@ class SeagullDeviceCardEditor extends HTMLElement {
 
     const excludedPatterns = ["identify", "firmware", "battery_voltage", "battery voltage"];
     if (excludedPatterns.some((p) => entityId.includes(p) || name.includes(p))) return false;
-    if (category === "diagnostic" || category === "config" || category === "configuration") return false;
+    if (category === "config" || category === "configuration") return false;
 
     const sensorDomains = new Set(["sensor", "binary_sensor"]);
     const controlDomains = new Set(["switch", "light", "fan", "cover", "climate", "lock", "button", "select", "number", "input_boolean"]);
