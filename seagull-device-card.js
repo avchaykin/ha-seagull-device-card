@@ -17,6 +17,7 @@ class SeagullDeviceCard extends HTMLElement {
       background_icon_scale: 1.7,
       hide_unavailable: false,
       sort: true,
+      hide_all: false,
       badge: {
         type: "last_changed",
         color: [
@@ -45,6 +46,7 @@ class SeagullDeviceCard extends HTMLElement {
       throw new Error("Card type must be custom:seagull-device-card");
     }
     this._config = config;
+    this._collapsedInit = false;
     this._render();
   }
 
@@ -135,6 +137,7 @@ class SeagullDeviceCard extends HTMLElement {
     };
 
     const sortEnabled = this._config?.sort !== false;
+    const hideAll = this._config?.hide_all === true;
     const areaOrder = [];
     const areaMap = new Map();
 
@@ -154,6 +157,12 @@ class SeagullDeviceCard extends HTMLElement {
       areas.forEach((a) => {
         a.devices.sort((d1, d2) => String(d1?.name || d1?.device_id || "").localeCompare(String(d2?.name || d2?.device_id || "")));
       });
+    }
+
+    if (!this._collapsedAreaIds) this._collapsedAreaIds = new Set();
+    if (!this._collapsedInit) {
+      this._collapsedAreaIds = hideAll ? new Set(areas.map((a) => a.areaId)) : new Set();
+      this._collapsedInit = true;
     }
 
     const deviceBlocks = [];
@@ -245,12 +254,16 @@ class SeagullDeviceCard extends HTMLElement {
       `);
     }
 
-      const areaHeader = `<div style="font-size:12px;font-weight:700;opacity:.95;color:${primaryTextColor};padding:3px 8px;border-radius:8px;background:${isDark ? "rgba(30,41,59,0.75)" : "rgba(148,163,184,0.20)"};">${this._esc(area.areaName)}</div>`;
+      const areaCollapsed = this._collapsedAreaIds.has(area.areaId);
+      const areaHeader = `<button class="sg-area-header" data-area-id="${this._esc(area.areaId)}" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;opacity:.95;color:${primaryTextColor};padding:3px 8px;border-radius:8px;background:${isDark ? "rgba(30,41,59,0.75)" : "rgba(148,163,184,0.20)"};border:none;cursor:pointer;font-family:inherit;text-align:left;">
+        <span style="font-size:12px;line-height:1;">${areaCollapsed ? "▸" : "▾"}</span>
+        <span>${this._esc(area.areaName)}</span>
+      </button>`;
 
       deviceBlocks.push(`
         <div style="display:flex;flex-direction:column;gap:${gap}px;">
           ${areaHeader}
-          ${areaDeviceBlocks.join("")}
+          ${areaCollapsed ? "" : areaDeviceBlocks.join("")}
         </div>
       `);
     }
@@ -282,6 +295,18 @@ class SeagullDeviceCard extends HTMLElement {
         const deviceId = ev.currentTarget.getAttribute("data-device-id");
         if (!deviceId) return;
         await this._openDeviceInfo(deviceId);
+      });
+    });
+
+    this._inner.querySelectorAll(".sg-area-header").forEach((el) => {
+      el.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const areaId = ev.currentTarget.getAttribute("data-area-id");
+        if (!this._collapsedAreaIds) this._collapsedAreaIds = new Set();
+        if (this._collapsedAreaIds.has(areaId)) this._collapsedAreaIds.delete(areaId);
+        else this._collapsedAreaIds.add(areaId);
+        this._render();
       });
     });
   }
