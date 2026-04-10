@@ -246,7 +246,7 @@ class SeagullDeviceCard extends HTMLElement {
     }
 
       const areaHeader = areas.length > 1
-        ? `<div style="font-size:12px;font-weight:700;opacity:.75;color:${primaryTextColor};padding:0 2px;">${this._esc(area.areaName)}</div>`
+        ? `<div style="font-size:12px;font-weight:700;opacity:.95;color:${primaryTextColor};padding:3px 8px;border-radius:8px;background:${isDark ? "rgba(30,41,59,0.75)" : "rgba(148,163,184,0.20)"};">${this._esc(area.areaName)}</div>`
         : "";
 
       deviceBlocks.push(`
@@ -279,11 +279,25 @@ class SeagullDeviceCard extends HTMLElement {
 
     this._inner.querySelectorAll(".sg-device-title").forEach((el) => {
       el.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
         const deviceId = ev.currentTarget.getAttribute("data-device-id");
         if (!deviceId) return;
         // Preferred path for Device Info popup in HA
         this.dispatchEvent(
           new CustomEvent("hass-show-dialog", {
+            bubbles: true,
+            composed: true,
+            detail: {
+              dialogTag: "ha-device-info-dialog",
+              dialogParams: { deviceId },
+            },
+          })
+        );
+
+        // Extra compatibility path used by some HA builds
+        this.dispatchEvent(
+          new CustomEvent("show-dialog", {
             bubbles: true,
             composed: true,
             detail: {
