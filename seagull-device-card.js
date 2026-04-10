@@ -781,9 +781,13 @@ class SeagullDeviceCardEditor extends HTMLElement {
     (areaRows || []).forEach(({ device, entities }) => {
       if (checked) this._selectedDeviceIds.add(device.id);
       else this._selectedDeviceIds.delete(device.id);
+      const isNewDevice = !this._getExistingDevice(device.id);
       (entities || []).forEach((entity) => {
-        if (checked) this._selectedEntityIds.add(entity.entity_id);
-        else this._selectedEntityIds.delete(entity.entity_id);
+        if (checked) {
+          if (!isNewDevice || this._isDefaultIncludedEntity(entity)) this._selectedEntityIds.add(entity.entity_id);
+        } else {
+          this._selectedEntityIds.delete(entity.entity_id);
+        }
       });
     });
     this._syncConfigFromSelection();
@@ -805,10 +809,12 @@ class SeagullDeviceCardEditor extends HTMLElement {
     if (checked) this._selectedDeviceIds.add(deviceId);
     else this._selectedDeviceIds.delete(deviceId);
 
+    const isNewDevice = !this._getExistingDevice(deviceId);
+
     for (const entity of entities || []) {
       const entityId = entity.entity_id;
       if (checked) {
-        this._selectedEntityIds.add(entityId);
+        if (!isNewDevice || this._isDefaultIncludedEntity(entity)) this._selectedEntityIds.add(entityId);
       } else {
         this._selectedEntityIds.delete(entityId);
       }
@@ -834,17 +840,20 @@ class SeagullDeviceCardEditor extends HTMLElement {
   }
 
   _selectAllInArea() {
-    const rows = this._areaRows();
+    const rows = this._areaRows(null);
     for (const { device, entities } of rows) {
       this._selectedDeviceIds.add(device.id);
-      for (const entity of entities) this._selectedEntityIds.add(entity.entity_id);
+      const isNewDevice = !this._getExistingDevice(device.id);
+      for (const entity of entities) {
+        if (!isNewDevice || this._isDefaultIncludedEntity(entity)) this._selectedEntityIds.add(entity.entity_id);
+      }
     }
     this._syncConfigFromSelection();
     this._render();
   }
 
   _clearSelection() {
-    const rows = this._areaRows();
+    const rows = this._areaRows(null);
     for (const { device, entities } of rows) {
       this._selectedDeviceIds.delete(device.id);
       for (const entity of entities) {
@@ -853,6 +862,21 @@ class SeagullDeviceCardEditor extends HTMLElement {
     }
     this._syncConfigFromSelection();
     this._render();
+  }
+
+  _isDefaultIncludedEntity(entity) {
+    const entityId = String(entity?.entity_id || "").toLowerCase();
+    const name = String(entity?.name || entity?.original_name || "").toLowerCase();
+    const category = String(entity?.entity_category || "").toLowerCase();
+    const domain = entityId.split(".")[0] || "";
+
+    const excludedPatterns = ["identify", "firmware", "battery_voltage", "battery voltage"];
+    if (excludedPatterns.some((p) => entityId.includes(p) || name.includes(p))) return false;
+    if (category === "diagnostic") return false;
+
+    const sensorDomains = new Set(["sensor", "binary_sensor"]);
+    const controlDomains = new Set(["switch", "light", "fan", "cover", "climate", "lock", "button", "select", "number", "input_boolean"]);
+    return sensorDomains.has(domain) || controlDomains.has(domain);
   }
 
   _syncConfigFromSelection() {
