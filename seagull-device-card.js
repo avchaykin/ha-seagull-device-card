@@ -23,6 +23,7 @@ class SeagullDeviceCard extends HTMLElement {
           { delay: 360, value: "#facc15" },
           { delay: 720, value: "#f97316" },
           { delay: 1440, value: "#ef4444" },
+          { delay: 10080, value: "#9ca3af" },
         ],
       },
       wizard: {
@@ -402,6 +403,7 @@ class SeagullDeviceCard extends HTMLElement {
       { delay: 360, value: "#facc15" },
       { delay: 720, value: "#f97316" },
       { delay: 1440, value: "#ef4444" },
+      { delay: 10080, value: "#9ca3af" },
     ];
 
     const stopsRaw = Array.isArray(badge.color) ? badge.color : defaultStops;
