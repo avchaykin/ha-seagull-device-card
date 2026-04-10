@@ -245,9 +245,7 @@ class SeagullDeviceCard extends HTMLElement {
       `);
     }
 
-      const areaHeader = areas.length > 1
-        ? `<div style="font-size:12px;font-weight:700;opacity:.95;color:${primaryTextColor};padding:3px 8px;border-radius:8px;background:${isDark ? "rgba(30,41,59,0.75)" : "rgba(148,163,184,0.20)"};">${this._esc(area.areaName)}</div>`
-        : "";
+      const areaHeader = `<div style="font-size:12px;font-weight:700;opacity:.95;color:${primaryTextColor};padding:3px 8px;border-radius:8px;background:${isDark ? "rgba(30,41,59,0.75)" : "rgba(148,163,184,0.20)"};">${this._esc(area.areaName)}</div>`;
 
       deviceBlocks.push(`
         <div style="display:flex;flex-direction:column;gap:${gap}px;">
