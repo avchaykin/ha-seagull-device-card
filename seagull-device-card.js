@@ -57,22 +57,38 @@ class SeagullDeviceCard extends HTMLElement {
   }
 
   async _ensureDeviceRegistry() {
-    if (!this._hass?.connection || this._deviceRegistryLoaded) return;
-    this._deviceRegistryLoaded = true;
+    if (!this._hass?.connection || this._deviceRegistryLoaded || this._deviceRegistryLoading) return;
+    this._deviceRegistryLoading = true;
     try {
       const devices = await this._hass.connection.sendMessagePromise({ type: "config/device_registry/list" });
       this._deviceNameById = new Map(
         (Array.isArray(devices) ? devices : []).map((d) => [d.id, d.name_by_user || d.name || d.id])
       );
+      this._deviceRegistryLoaded = true;
+      this._deviceRegistryLoading = false;
       this._render();
-    } catch (_e) {
-      // ignore; card will fallback to config/device_id names
+    } catch (e) {
+      this._deviceRegistryLoading = false;
+      // keep retrying on next hass updates; fallback names used meanwhile
+      console.debug("[seagull-device-card] device registry unavailable, using fallbacks", e);
     }
   }
 
   _displayDeviceName(device) {
     const id = device?.device_id;
-    return this._deviceNameById?.get(id) || device?.name || id || "Device";
+    const registryName = this._deviceNameById?.get(id);
+    if (registryName && registryName !== id) return registryName;
+    if (device?.name) return device.name;
+
+    const entities = Array.isArray(device?.entities) ? device.entities : [];
+    for (const entry of entities) {
+      const entityId = typeof entry === "string" ? entry : entry?.entity_id;
+      if (!entityId) continue;
+      const friendly = this._hass?.states?.[entityId]?.attributes?.friendly_name;
+      if (friendly) return String(friendly);
+    }
+
+    return id || "Device";
   }
 
   getCardSize() {
