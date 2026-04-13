@@ -2,30 +2,39 @@
 
 Home Assistant custom card: `custom:seagull-device-card`.
 
-A device-oriented card with an interactive editor wizard (area → device → entity) and a compact grid UI for selected entities.
+Device-focused card with a live wizard editor (area → device → entity), grouped rendering, badges, and compact status buttons.
 
-## What it does
+## Features
 
-- Editor wizard with hierarchical tree:
-  - Areas (expand/collapse + checkbox)
-  - Devices inside areas (expand/collapse + checkbox)
-  - Entities inside devices (checkbox)
-- Live config updates while you click (no separate “create config” button)
-- Safe removal behavior:
-  - Clean entries are removed from config when unchecked
-  - Configured entries are marked with `disable: true` when unchecked
+- Interactive wizard tree:
+  - Areas (checkbox + expand/collapse)
+  - Devices (checkbox + expand/collapse)
+  - Entities (checkbox)
+- Live config updates (no separate apply/create step)
+- Default selection for **new** devices includes key entities only:
+  - Domains: `sensor`, `binary_sensor`, `switch`, `light`, `fan`, `cover`, `climate`, `lock`, `button`, `select`, `number`, `input_boolean`
+  - Excludes by default: `Identify`, `Firmware`, `Battery voltage`, `configuration/config`
+  - Diagnostic is included only for: `battery`, `temperature`, `connection state`, `last seen`, `status`
+- Non-destructive removal logic:
+  - Clean entries are removed when unchecked
+  - Entries with custom config are kept with `disable: true`
   - Re-checking removes `disable: true`
-- Device card rendering:
-  - Grouped by device
-  - Device title on the left
-  - Entity buttons right-aligned in grid slots
-  - `more-info` on click
-- Entity visuals:
+- Card rendering:
+  - Grouped by area, then by device
+  - Area header badge always shown, collapsible (`▾/▸`)
+  - Device title clickable (attempts to open Device Info)
+  - Entity buttons aligned by grid, `more-info` on click
+- Visual behavior:
   - Large semi-transparent background icon per button
-  - Toggle-style entities (`light`, `switch`) show icon-only
-  - Unavailable entities show diagonal striped fill and no text
-  - Binary sensor state mapping (e.g. `window off -> Closed`, `door on -> Open`)
-  - `unit_of_measurement` appended to state unless explicitly disabled per entity config
+  - `light`/`switch`: icon-only state
+  - `unavailable`: diagonal striped fill + hidden text
+  - Optional `hide_unavailable`
+  - Binary sensor text mapping (e.g. window off → Closed)
+  - Unit is appended to sensor value unless `unit_of_measurement: false` on that entity
+- Aging badge dots:
+  - Per-entity badge (top-right on button)
+  - Per-device badge (top-left on device block)
+  - Configurable by `last_changed` or `last_updated`
 
 ## Installation
 
@@ -55,52 +64,77 @@ type: custom:seagull-device-card
 devices: []
 ```
 
-Tip: start from this minimal config and use the visual editor wizard.
+Tip: start minimal, then configure via visual editor.
 
 ## Card options
 
-### Layout / look
+### Layout / behavior
 
 - `grid_columns` (default: `4`)
 - `grid_gap` (default: `6`)
 - `button_border_radius` (default: `8`)
 - `button_height` (default: `36`)
-- `background_icon_scale` (default: `1.7`) — multiplier relative to `button_height`
+- `background_icon_scale` (default: `1.7`) — relative to button height
+- `hide_unavailable` (default: `false`)
+- `sort` (default: `true`) — sort devices alphabetically inside each area
+- `hide_all` (default: `false`) — collapse all area groups by default
 
-### Container
+### Badge
 
-- `background_color` (kept for compatibility)
+```yaml
+badge:
+  type: last_changed # or last_updated
+  color:
+    - delay: 60
+      value: "#22c55e"
+    - delay: 360
+      value: "#facc15"
+    - delay: 720
+      value: "#f97316"
+    - delay: 1440
+      value: "#ef4444"
+    - delay: 10080
+      value: "#9ca3af"
+```
+
+`delay` is in minutes. Highest matched threshold color is used.
+
+### Container compatibility fields
+
+- `background_color`
 - `background_opacity`
 - `border_radius`
 - `border_width`
 - `border_color`
 
-## Config structure
+## Config shape
 
 ```yaml
 type: custom:seagull-device-card
+sort: true
+hide_all: false
+hide_unavailable: false
 grid_columns: 4
 grid_gap: 6
 button_border_radius: 8
 button_height: 36
 background_icon_scale: 1.7
-wizard:
-  area_id: null
-  device_ids: []
-  entity_ids: []
+badge:
+  type: last_changed
 devices:
   - device_id: abc123
-    name: Living Room Lights
+    area_id: living_room
+    area_name: Living Room
     entities:
       - light.floor_lamp
-      - entity_id: binary_sensor.window_left
-        # Any extra per-entity settings are preserved by wizard.
-        # If unchecked in wizard, this becomes disable: true.
+      - entity_id: sensor.room_temp
         unit_of_measurement: false
+      - entity_id: binary_sensor.window
+        disable: true
 ```
 
 ## Notes
 
-- The editor shows a version pill.
-- The card and loader log version announcements in browser console.
-- Auto-deploy hooks (if enabled in local clone) are in `scripts/` and `.githooks/`.
+- Device `name` is not required in config and is resolved dynamically from HA registry.
+- Editor shows selected counts (entities/devices/areas/unavailable).
+- Card adapts for dark theme (darker blocks/buttons, lighter text).
