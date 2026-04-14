@@ -153,11 +153,12 @@ class SeagullDeviceCard extends HTMLElement {
         : "#6b7280";
       const bgIconOpacity = hideText ? 0.42 : 0.18;
       const badgeColor = this._badgeColorForEntity(st);
+      const themedBg = this._buttonBackgroundForEntity(entityId, st, isDark);
       const buttonBg = isUnavailable
         ? (isDark
           ? "repeating-linear-gradient(-45deg, rgba(100,116,139,0.45) 0 8px, rgba(71,85,105,0.65) 8px 16px)"
           : "repeating-linear-gradient(-45deg, rgba(148,163,184,0.35) 0 8px, rgba(203,213,225,0.55) 8px 16px)")
-        : (isDark ? "#1f2937" : "#eeeeee");
+        : themedBg;
       const html = `
         <button class="sg-device-btn" data-entity-id="${this._esc(entityId)}" style="position:relative;grid-column:span ${span};display:flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:${btnRadius}px;border:none;background:${buttonBg};cursor:pointer;min-height:${btnHeight}px;overflow:hidden;font-family:inherit;">
           ${badgeColor ? `<span style="position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:999px;background:${this._esc(badgeColor)};z-index:2;"></span>` : ""}
@@ -522,6 +523,37 @@ class SeagullDeviceCard extends HTMLElement {
     if (domain === "cover") return st === "open" || st === "opening";
     if (domain === "vacuum") return st === "cleaning";
     return st === "on";
+  }
+
+  _buttonBackgroundForEntity(entityId, stateObj, isDark) {
+    const domain = String(entityId || "").split(".")[0];
+    const dc = String(stateObj?.attributes?.device_class || "").toLowerCase();
+
+    const pick = (lightColor, darkColor) => (isDark ? darkColor : lightColor);
+
+    if (domain === "light") return pick("#fff7e6", "#3a2f1f");
+    if (domain === "switch") return pick("#f2f7ff", "#1f2a3a");
+    if (domain === "climate") return pick("#eefbf4", "#1b3327");
+    if (domain === "cover") return pick("#f5f3ff", "#2a2440");
+    if (domain === "lock") return pick("#fff1f2", "#3a1f24");
+    if (domain === "fan") return pick("#ecfeff", "#18323a");
+
+    if (domain === "binary_sensor") {
+      if (["door", "window", "opening", "garage_door"].includes(dc)) return pick("#eef2ff", "#222b45");
+      if (["motion", "occupancy", "presence"].includes(dc)) return pick("#ecfeff", "#1b3640");
+      if (["moisture", "smoke", "gas", "problem", "safety"].includes(dc)) return pick("#fff1f2", "#3a1f24");
+      return pick("#f3f4f6", "#273142");
+    }
+
+    if (domain === "sensor") {
+      if (dc === "temperature") return pick("#fff7ed", "#3a2a1f");
+      if (dc === "humidity" || dc === "moisture") return pick("#eff6ff", "#1e2e44");
+      if (dc === "battery") return pick("#fefce8", "#3a371d");
+      if (dc === "power" || dc === "energy" || dc === "voltage" || dc === "current") return pick("#fef2f2", "#3a2323");
+      return pick("#f5f5f5", "#2a3342");
+    }
+
+    return isDark ? "#1f2937" : "#eeeeee";
   }
 
   _badgeColorForEntity(stateObj) {
@@ -946,10 +978,9 @@ class SeagullDeviceCardEditor extends HTMLElement {
     (areaRows || []).forEach(({ device, entities }) => {
       if (checked) this._selectedDeviceIds.add(device.id);
       else this._selectedDeviceIds.delete(device.id);
-      const isNewDevice = !this._getExistingDevice(device.id);
       (entities || []).forEach((entity) => {
         if (checked) {
-          if (!isNewDevice || this._isDefaultIncludedEntity(entity)) this._selectedEntityIds.add(entity.entity_id);
+          this._selectedEntityIds.add(entity.entity_id);
         } else {
           this._selectedEntityIds.delete(entity.entity_id);
         }
@@ -974,12 +1005,10 @@ class SeagullDeviceCardEditor extends HTMLElement {
     if (checked) this._selectedDeviceIds.add(deviceId);
     else this._selectedDeviceIds.delete(deviceId);
 
-    const isNewDevice = !this._getExistingDevice(deviceId);
-
     for (const entity of entities || []) {
       const entityId = entity.entity_id;
       if (checked) {
-        if (!isNewDevice || this._isDefaultIncludedEntity(entity)) this._selectedEntityIds.add(entityId);
+        this._selectedEntityIds.add(entityId);
       } else {
         this._selectedEntityIds.delete(entityId);
       }
@@ -1008,9 +1037,8 @@ class SeagullDeviceCardEditor extends HTMLElement {
     const rows = this._areaRows(null);
     for (const { device, entities } of rows) {
       this._selectedDeviceIds.add(device.id);
-      const isNewDevice = !this._getExistingDevice(device.id);
       for (const entity of entities) {
-        if (!isNewDevice || this._isDefaultIncludedEntity(entity)) this._selectedEntityIds.add(entity.entity_id);
+        this._selectedEntityIds.add(entity.entity_id);
       }
     }
     this._syncConfigFromSelection();
@@ -1027,27 +1055,6 @@ class SeagullDeviceCardEditor extends HTMLElement {
     }
     this._syncConfigFromSelection();
     this._render();
-  }
-
-  _isDefaultIncludedEntity(entity) {
-    const entityId = String(entity?.entity_id || "").toLowerCase();
-    const name = String(entity?.name || entity?.original_name || "").toLowerCase();
-    const category = String(entity?.entity_category || "").toLowerCase();
-    const domain = entityId.split(".")[0] || "";
-
-    const excludedPatterns = ["identify", "firmware", "battery_voltage", "battery voltage"];
-    if (excludedPatterns.some((p) => entityId.includes(p) || name.includes(p))) return false;
-    if (category === "diagnostic") {
-      const dc = String(entity?.device_class || "").toLowerCase();
-      const allowDiagnostic = ["battery", "temperature", "connection state", "connection_state", "last seen", "last_seen", "status"]
-        .some((k) => entityId.includes(k) || name.includes(k) || dc.includes(k));
-      if (!allowDiagnostic) return false;
-    }
-    if (category === "config" || category === "configuration") return false;
-
-    const sensorDomains = new Set(["sensor", "binary_sensor"]);
-    const controlDomains = new Set(["switch", "light", "fan", "cover", "climate", "lock", "button", "select", "number", "input_boolean"]);
-    return sensorDomains.has(domain) || controlDomains.has(domain);
   }
 
   _syncConfigFromSelection() {
