@@ -4,6 +4,8 @@ Home Assistant custom card: `custom:seagull-device-card`.
 
 Device-focused card with a live wizard editor (area → device → entity), grouped rendering, badges, and compact status buttons.
 
+<img src="assets/screenshot.jpg" alt="Seagull Device Card screenshot" width="420" />
+
 ## Features
 
 - Interactive wizard tree:
