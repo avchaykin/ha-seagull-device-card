@@ -1045,6 +1045,20 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this._render();
   }
 
+  _addAllInAssignedAreas() {
+    const groups = this._areaGroups().filter((g) => g.areaId !== "__unassigned__");
+    for (const group of groups) {
+      for (const { device, entities } of group.rows || []) {
+        this._selectedDeviceIds.add(device.id);
+        for (const entity of entities || []) {
+          this._selectedEntityIds.add(entity.entity_id);
+        }
+      }
+    }
+    this._syncConfigFromSelection();
+    this._render();
+  }
+
   _clearSelection() {
     const rows = this._areaRows(null);
     for (const { device, entities } of rows) {
@@ -1170,6 +1184,26 @@ class SeagullDeviceCardEditor extends HTMLElement {
     this._render();
   }
 
+  _toggleSort(checked) {
+    const config = {
+      ...this._config,
+      type: "custom:seagull-device-card",
+      sort: !!checked,
+    };
+    this._emitConfigChanged(config);
+    this._render();
+  }
+
+  _toggleHideAll(checked) {
+    const config = {
+      ...this._config,
+      type: "custom:seagull-device-card",
+      hide_all: !!checked,
+    };
+    this._emitConfigChanged(config);
+    this._render();
+  }
+
   _esc(s) {
     return String(s)
       .replaceAll("&", "&amp;")
@@ -1254,9 +1288,23 @@ class SeagullDeviceCardEditor extends HTMLElement {
             Выбрано: <b>${this._selectedEntityIds?.size || 0}</b> сущностей, <b>${this._selectedDeviceIds?.size || 0}</b> устройств, <b>${areaGroups.filter((g) => g.rows.some((r) => this._selectedDeviceIds.has(r.device.id))).length}</b> area, <b>${selectedUnavailableCount}</b> unavailable
           </div>
 
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="sg-add-all-areas" type="button" style="padding:6px 10px;border-radius:8px;border:1px solid var(--divider-color,#d1d5db);background:var(--card-background-color,#fff);cursor:pointer;font:inherit;">Add all in areas</button>
+          </div>
+
           <label style="margin-top:8px;display:flex;align-items:center;gap:8px;opacity:.9;">
             <input id="sg-hide-unavailable" type="checkbox" ${this._config?.hide_unavailable ? "checked" : ""}>
             <span>Hide unavailable entities</span>
+          </label>
+
+          <label style="margin-top:8px;display:flex;align-items:center;gap:8px;opacity:.9;">
+            <input id="sg-sort" type="checkbox" ${this._config?.sort !== false ? "checked" : ""}>
+            <span>Sort</span>
+          </label>
+
+          <label style="margin-top:8px;display:flex;align-items:center;gap:8px;opacity:.9;">
+            <input id="sg-hide-all" type="checkbox" ${this._config?.hide_all ? "checked" : ""}>
+            <span>Hide all (collapsed by default)</span>
           </label>
 
         </div>
@@ -1315,6 +1363,27 @@ class SeagullDeviceCardEditor extends HTMLElement {
     if (hideUnavailableCheckbox) {
       hideUnavailableCheckbox.addEventListener("change", (ev) => {
         this._toggleHideUnavailable(ev.target.checked);
+      });
+    }
+
+    const sortCheckbox = this.querySelector("#sg-sort");
+    if (sortCheckbox) {
+      sortCheckbox.addEventListener("change", (ev) => {
+        this._toggleSort(ev.target.checked);
+      });
+    }
+
+    const hideAllCheckbox = this.querySelector("#sg-hide-all");
+    if (hideAllCheckbox) {
+      hideAllCheckbox.addEventListener("change", (ev) => {
+        this._toggleHideAll(ev.target.checked);
+      });
+    }
+
+    const addAllInAreasButton = this.querySelector("#sg-add-all-areas");
+    if (addAllInAreasButton) {
+      addAllInAreasButton.addEventListener("click", () => {
+        this._addAllInAssignedAreas();
       });
     }
 
