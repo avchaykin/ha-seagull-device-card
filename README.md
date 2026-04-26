@@ -140,3 +140,4 @@ devices:
 - Device `name` is not required in config and is resolved dynamically from HA registry.
 - Editor shows selected counts (entities/devices/areas/unavailable).
 - Card adapts for dark theme (darker blocks/buttons, lighter text).
+- Binary sensor on/off text mapping table: `docs/binary-sensor-state-mapping.md`.

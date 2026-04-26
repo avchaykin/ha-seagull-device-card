@@ -489,27 +489,39 @@ class SeagullDeviceCard extends HTMLElement {
     const on = st === "on";
 
     const map = {
+      none: on ? "On" : "Off",
       window: on ? "Open" : "Closed",
       door: on ? "Open" : "Closed",
       opening: on ? "Open" : "Closed",
       garage_door: on ? "Open" : "Closed",
       lock: on ? "Unlocked" : "Locked",
-      motion: on ? "Motion" : "Clear",
+      motion: on ? "Detected" : "Clear",
       occupancy: on ? "Occupied" : "Clear",
       presence: on ? "Home" : "Away",
       connectivity: on ? "Connected" : "Disconnected",
       plug: on ? "Plugged" : "Unplugged",
       power: on ? "On" : "Off",
+      carbon_monoxide: on ? "Detected" : "Clear",
+      cold: on ? "Cold" : "Normal",
+      gas: on ? "Detected" : "Clear",
+      heat: on ? "Hot" : "Normal",
+      light: on ? "Detected" : "Clear",
       problem: on ? "Problem" : "OK",
+      moving: on ? "Moving" : "Stopped",
+      running: on ? "Running" : "Not running",
+      safety: on ? "Unsafe" : "Safe",
       smoke: on ? "Smoke" : "Clear",
       moisture: on ? "Wet" : "Dry",
       battery: on ? "Low" : "Normal",
       battery_charging: on ? "Charging" : "Not charging",
       sound: on ? "Detected" : "Quiet",
+      tamper: on ? "Tampered" : "Clear",
+      update: on ? "Update available" : "Up-to-date",
       vibration: on ? "Vibration" : "Still",
     };
 
-    if (map[dc]) return map[dc];
+    if (dc && map[dc]) return map[dc];
+    if (!dc && map.none) return map.none;
     if (st === "on") return "On";
     if (st === "off") return "Off";
     return String(state ?? "unknown");
