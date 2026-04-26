@@ -499,7 +499,7 @@ class SeagullDeviceCard extends HTMLElement {
       presence: on ? "Home" : "Away",
       connectivity: on ? "Connected" : "Disconnected",
       plug: on ? "Plugged" : "Unplugged",
-      power: on ? "Power issue" : "Normal",
+      power: on ? "On" : "Off",
       problem: on ? "Problem" : "OK",
       smoke: on ? "Smoke" : "Clear",
       moisture: on ? "Wet" : "Dry",
