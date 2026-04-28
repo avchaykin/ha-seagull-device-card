@@ -479,8 +479,18 @@ class SeagullDeviceCard extends HTMLElement {
       return mapped;
     }
 
-    if (!unit || !unitAllowed) return String(state);
-    return `${state}${unit}`;
+    const roundedState = this._roundNumericState(state);
+
+    if (!unit || !unitAllowed) return roundedState;
+    return `${roundedState}${unit}`;
+  }
+
+  _roundNumericState(state) {
+    const str = String(state ?? "");
+    if (!/^[-+]?\d+(\.\d+)?$/.test(str)) return str;
+    const n = Number(str);
+    if (!Number.isFinite(n)) return str;
+    return Number(n.toFixed(2)).toString();
   }
 
   _mapBinarySensorState(state, deviceClass) {
